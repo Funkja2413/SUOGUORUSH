@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>虎牢关音频素材审核</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        background: #171512;
+        color: #f8ead0;
+      }
+
+      body {
+        margin: 0;
+        padding: 32px;
+        background:
+          linear-gradient(rgb(23 21 18 / 0.86), rgb(23 21 18 / 0.94)),
+          radial-gradient(circle at 22% 0%, #6c3920, transparent 34%),
+          #171512;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 30px;
+      }
+
+      p {
+        margin: 0 0 24px;
+        color: #d8c3a0;
+      }
+
+      .track {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        align-items: center;
+        gap: 18px;
+        padding: 14px 0;
+        border-top: 1px solid rgb(248 234 208 / 0.16);
+      }
+
+      strong {
+        font-size: 15px;
+      }
+
+      audio {
+        width: 100%;
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 20px;
+        }
+
+        .track {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>虎牢关音频素材审核</h1>
+      <p>这批 WAV 暂放在 review_audio，不会影响游戏正式资源。</p>
+
+      <section class="track"><strong>BGM 战场循环</strong><audio controls src="./bgm_hulaoguan_battle_loop.wav"></audio></section>
+      <section class="track"><strong>开波锣鼓号角</strong><audio controls src="./wave_start_gong_horn.wav"></audio></section>
+      <section class="track"><strong>建塔</strong><audio controls src="./tower_build.wav"></audio></section>
+      <section class="track"><strong>升级塔</strong><audio controls src="./tower_upgrade.wav"></audio></section>
+      <section class="track"><strong>拆塔</strong><audio controls src="./tower_dismantle.wav"></audio></section>
+      <section class="track"><strong>弓箭发射</strong><audio controls src="./projectile_arrow.wav"></audio></section>
+      <section class="track"><strong>弩机发射</strong><audio controls src="./projectile_crossbow.wav"></audio></section>
+      <section class="track"><strong>法术发射</strong><audio controls src="./projectile_magic.wav"></audio></section>
+      <section class="track"><strong>火球发射</strong><audio controls src="./projectile_fire.wav"></audio></section>
+      <section class="track"><strong>投石发射</strong><audio controls src="./projectile_stone.wav"></audio></section>
+      <section class="track"><strong>英雄点击</strong><audio controls src="./ui_hero_select.wav"></audio></section>
+      <section class="track"><strong>英雄攻击</strong><audio controls src="./hero_attack.wav"></audio></section>
+      <section class="track"><strong>英雄技能</strong><audio controls src="./hero_skill.wav"></audio></section>
+      <section class="track"><strong>英雄死亡</strong><audio controls src="./hero_death.wav"></audio></section>
+      <section class="track"><strong>小兵攻击</strong><audio controls src="./enemy_attack.wav"></audio></section>
+      <section class="track"><strong>小兵死亡</strong><audio controls src="./enemy_death.wav"></audio></section>
+    </main>
+  </body>
+</html>

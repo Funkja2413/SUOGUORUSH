@@ -1,0 +1,542 @@
+{
+  "level_id": "L001",
+  "level_name": "虎牢关",
+  "battle_theme": "守关防御战",
+  "defender_faction": "联军",
+  "attacker_faction": "西凉军",
+  "base": {
+    "max_hp": 20,
+    "initial_hp": 20
+  },
+  "economy": {
+    "initial_gold": 500
+  },
+  "hero": {
+    "id": "hero_liubei",
+    "name": "刘备",
+    "type": "melee",
+    "max_hp": 1200,
+    "initial_hp": 1200,
+    "revive_cooldown": 30,
+    "attack": 120,
+    "attack_interval": 1.0,
+    "target_type": "ground",
+    "skills": [
+      {
+        "name": "双剑旋斩",
+        "type": "active",
+        "effect": "aoe_damage",
+        "damage": 220,
+        "radius": 2.2,
+        "cooldown": 25
+      },
+      {
+        "name": "龙魂剑气",
+        "type": "active",
+        "effect": "magic_damage",
+        "damage": 360,
+        "radius": 3.0,
+        "cooldown": 40
+      }
+    ]
+  },
+  "boss": {
+    "id": "boss_lvbu",
+    "name": "吕布",
+    "hp": 4000,
+    "armor": 0.3,
+    "move_speed": 1.0,
+    "attack": 140,
+    "attack_interval": 1.5,
+    "leak_damage": 5,
+    "reward_gold": 300,
+    "skills": [
+      {
+        "name": "方天冲锋",
+        "effect": "dash_forward",
+        "distance": 5,
+        "cooldown": 12
+      },
+      {
+        "name": "战神怒吼",
+        "effect": "enemy_speed_up",
+        "value": 0.3,
+        "duration": 8,
+        "cooldown": 18
+      }
+    ]
+  },
+  "map": {
+    "type": "single_path",
+    "path_length": 18,
+    "tower_slots": [
+      { "slot_id": "T1", "position": "upper_mid" },
+      { "slot_id": "T2", "position": "upper_right" },
+      { "slot_id": "T3", "position": "middle_left" },
+      { "slot_id": "T4", "position": "middle_right" },
+      { "slot_id": "T5", "position": "right_mid" },
+      { "slot_id": "T6", "position": "center_mid" },
+      { "slot_id": "T7", "position": "lower_left" },
+      { "slot_id": "T8", "position": "lower_right" },
+      { "slot_id": "T9", "position": "lower_mid_left" },
+      { "slot_id": "T10", "position": "bottom_right" },
+      { "slot_id": "T11", "position": "bottom_mid" }
+    ]
+  },
+  "tower_lifecycle_animations": {
+    "build": {
+      "name": "搭建动态",
+      "frame_count": 2,
+      "duration": 0.36
+    },
+    "dismantle": {
+      "name": "拆除动态",
+      "frame_count": 2,
+      "duration": 0.3
+    }
+  },
+  "towers": [
+    {
+      "id": "arrow_tower",
+      "name": "箭楼",
+      "visual": {
+        "levels": [
+          {
+            "level": 1,
+            "image": "./assets/towers/arrow_tower/lv1_static.png",
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+            {
+              "level": 2,
+              "image": "./assets/towers/arrow_tower/lv2_idle.png",
+              "columns": 4,
+              "rows": 3,
+              "frame_count": 12,
+              "fps": 4,
+              "display_width": 177,
+              "display_height": 132,
+              "y_offset": 41
+            },
+            {
+              "level": 3,
+              "image": "./assets/towers/arrow_tower/lv3_idle.png",
+              "columns": 4,
+              "rows": 3,
+              "frame_count": 12,
+              "fps": 4,
+              "display_width": 177,
+              "display_height": 132,
+              "y_offset": 41
+            }
+        ],
+        "muzzles": {
+          "left": [
+            { "x": -34, "y": -56 },
+            { "x": -18, "y": -62 }
+          ],
+          "right": [
+            { "x": 34, "y": -56 },
+            { "x": 48, "y": -62 }
+          ],
+          "front": [
+            { "x": -20, "y": -42 },
+            { "x": 22, "y": -44 }
+          ],
+          "back": [
+            { "x": -26, "y": -72 },
+            { "x": 26, "y": -72 }
+          ]
+        }
+      },
+      "damage_type": "physical",
+      "target_type": "air_ground",
+      "attack": 35,
+      "attack_speed": 1.2,
+      "range": 3,
+      "cost": 100,
+      "upgrade_cost": [150, 250]
+    },
+    {
+      "id": "crossbow_tower",
+      "name": "重弩营",
+      "visual": {
+        "levels": [
+          {
+            "level": 1,
+            "image": "./assets/towers/crossbow_tower/lv1_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 2,
+            "image": "./assets/towers/crossbow_tower/lv2_static.png",
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 3,
+            "image": "./assets/towers/crossbow_tower/lv3_static.png",
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          }
+        ],
+        "muzzles": {
+          "left": [
+            { "x": -44, "y": -58 },
+            { "x": -24, "y": -44 }
+          ],
+          "right": [
+            { "x": 44, "y": -58 },
+            { "x": 24, "y": -44 }
+          ],
+          "front": [
+            { "x": -26, "y": -38 },
+            { "x": 28, "y": -36 }
+          ],
+          "back": [
+            { "x": -34, "y": -74 },
+            { "x": 36, "y": -74 }
+          ]
+        }
+      },
+      "damage_type": "physical",
+      "target_type": "ground",
+      "attack": 80,
+      "attack_speed": 2.2,
+      "range": 4,
+      "cost": 150,
+      "upgrade_cost": [200, 300]
+    },
+    {
+      "id": "magic_tower",
+      "name": "军师台",
+      "visual": {
+        "levels": [
+          {
+            "level": 1,
+            "image": "./assets/towers/magic_tower/lv1_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 2,
+            "image": "./assets/towers/magic_tower/lv2_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 3,
+            "image": "./assets/towers/magic_tower/lv3_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          }
+        ],
+        "muzzles": {
+          "left": [
+            { "x": -34, "y": -62 },
+            { "x": -48, "y": -42 }
+          ],
+          "right": [
+            { "x": 34, "y": -62 },
+            { "x": 48, "y": -42 }
+          ],
+          "front": [
+            { "x": -22, "y": -40 },
+            { "x": 22, "y": -40 },
+            { "x": 0, "y": -30 }
+          ],
+          "back": [
+            { "x": 0, "y": -78 },
+            { "x": -28, "y": -70 },
+            { "x": 28, "y": -70 }
+          ]
+        }
+      },
+      "damage_type": "magic",
+      "target_type": "ground",
+      "attack": 55,
+      "attack_speed": 1.5,
+      "range": 3,
+      "cost": 140,
+      "upgrade_cost": [180, 260]
+    },
+    {
+      "id": "fire_tower",
+      "name": "火油营",
+      "visual": {
+        "levels": [
+          {
+            "level": 1,
+            "image": "./assets/towers/fire_tower/lv1_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 2,
+            "image": "./assets/towers/fire_tower/lv2_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 3,
+            "image": "./assets/towers/fire_tower/lv3_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          }
+        ],
+        "muzzles": {
+          "left": [
+            { "x": -50, "y": -62 },
+            { "x": -28, "y": -48 }
+          ],
+          "right": [
+            { "x": 50, "y": -62 },
+            { "x": 28, "y": -48 }
+          ],
+          "front": [
+            { "x": 0, "y": -40 },
+            { "x": -22, "y": -44 },
+            { "x": 22, "y": -44 }
+          ],
+          "back": [
+            { "x": -36, "y": -76 },
+            { "x": 36, "y": -76 }
+          ]
+        }
+      },
+      "damage_type": "magic",
+      "target_type": "air_ground",
+      "attack": 40,
+      "attack_speed": 2.0,
+      "dot_duration": 3,
+      "range": 2,
+      "cost": 160,
+      "upgrade_cost": [220, 320]
+    },
+    {
+      "id": "watchtower",
+      "name": "瞭望塔",
+      "visual": {
+        "levels": [
+          {
+            "level": 1,
+            "image": "./assets/towers/watchtower/lv1_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 2,
+            "image": "./assets/towers/watchtower/lv2_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          },
+          {
+            "level": 3,
+            "image": "./assets/towers/watchtower/lv3_idle.png",
+            "columns": 4,
+            "rows": 3,
+            "frame_count": 12,
+            "fps": 4,
+            "display_width": 177,
+            "display_height": 132,
+            "y_offset": 41
+          }
+        ],
+        "muzzles": {
+          "left": [
+            { "x": -48, "y": -54 },
+            { "x": -28, "y": -40 }
+          ],
+          "right": [
+            { "x": 48, "y": -54 },
+            { "x": 28, "y": -40 }
+          ],
+          "front": [
+            { "x": 0, "y": -32 },
+            { "x": -18, "y": -38 },
+            { "x": 18, "y": -38 }
+          ],
+          "back": [
+            { "x": -32, "y": -70 },
+            { "x": 32, "y": -70 },
+            { "x": 0, "y": -78 }
+          ]
+        }
+      },
+      "damage_type": "physical",
+      "target_type": "air",
+      "attack": 60,
+      "attack_speed": 1.0,
+      "range": 4,
+      "cost": 130,
+      "upgrade_cost": [180, 260]
+    }
+  ],
+  "enemies": [
+    {
+      "id": "knife_soldier",
+      "name": "西凉刀兵",
+      "type": "ground",
+      "hp": 200,
+      "physical_resistance": 0,
+      "magic_resistance": 0,
+      "move_speed": 1.0,
+      "attack": 30,
+      "attack_interval": 1.2,
+      "leak_damage": 1,
+      "reward_gold": 20
+    },
+    {
+      "id": "iron_cavalry",
+      "name": "西凉铁骑",
+      "type": "armor",
+      "hp": 500,
+      "physical_resistance": 0.7,
+      "magic_resistance": 0,
+      "move_speed": 1.2,
+      "attack": 75,
+      "attack_interval": 1.4,
+      "leak_damage": 2,
+      "reward_gold": 40
+    },
+    {
+      "id": "warlock",
+      "name": "西凉术士",
+      "type": "magic",
+      "hp": 300,
+      "physical_resistance": 1.0,
+      "magic_resistance": 0,
+      "move_speed": 0.8,
+      "attack": 55,
+      "attack_interval": 1.6,
+      "leak_damage": 2,
+      "reward_gold": 35
+    },
+    {
+      "id": "eagle_scout",
+      "name": "飞鹰斥候",
+      "type": "flying",
+      "hp": 250,
+      "physical_resistance": 0,
+      "magic_resistance": 0,
+      "move_speed": 1.5,
+      "attack": 40,
+      "attack_interval": 1.3,
+      "leak_damage": 3,
+      "reward_gold": 30
+    }
+  ],
+  "waves": [
+    {
+      "wave": 1,
+      "reward": 100,
+      "spawn_interval": 1.0,
+      "units": [{ "enemy_id": "knife_soldier", "count": 8 }]
+    },
+    {
+      "wave": 2,
+      "reward": 120,
+      "spawn_interval": 1.0,
+      "units": [
+        { "enemy_id": "knife_soldier", "count": 6 },
+        { "enemy_id": "iron_cavalry", "count": 4 }
+      ]
+    },
+    {
+      "wave": 3,
+      "reward": 150,
+      "spawn_interval": 0.8,
+      "units": [
+        { "enemy_id": "knife_soldier", "count": 5 },
+        { "enemy_id": "warlock", "count": 5 }
+      ]
+    },
+    {
+      "wave": 4,
+      "reward": 180,
+      "spawn_interval": 0.7,
+      "units": [
+        { "enemy_id": "eagle_scout", "count": 8 },
+        { "enemy_id": "knife_soldier", "count": 4 }
+      ]
+    },
+    {
+      "wave": 5,
+      "reward": 200,
+      "spawn_interval": 0.6,
+      "units": [
+        { "enemy_id": "knife_soldier", "count": 5 },
+        { "enemy_id": "iron_cavalry", "count": 3 },
+        { "enemy_id": "warlock", "count": 3 },
+        { "enemy_id": "eagle_scout", "count": 3 }
+      ]
+    },
+    {
+      "wave": 6,
+      "reward": 0,
+      "spawn_interval": 0.8,
+      "boss_delay": 8,
+      "units": [
+        { "enemy_id": "knife_soldier", "count": 8 },
+        { "enemy_id": "iron_cavalry", "count": 4 },
+        { "enemy_id": "warlock", "count": 4 },
+        { "enemy_id": "eagle_scout", "count": 4 }
+      ],
+      "boss": "boss_lvbu"
+    }
+  ],
+  "star_rules": {
+    "three_star": { "min_hp": 16 },
+    "two_star": { "min_hp": 8 },
+    "one_star": { "min_hp": 1 }
+  }
+}
