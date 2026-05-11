@@ -621,6 +621,44 @@ const eagleScoutAttackSprite = {
   frameHeight: 0
 };
 
+function defenderSpriteSet() {
+  return level.hero.id === "hero_lvbu"
+    ? {
+        idle: lvbuIdleSprite,
+        walk: lvbuWalkSprite,
+        attack: lvbuAttackSprite,
+        skill1: lvbuSkill1Sprite,
+        skill2: lvbuSkill2Sprite,
+        death: lvbuDeathSprite,
+        idleSize: 132,
+        walkSize: 148,
+        attackSize: 154,
+        skill1Size: 176,
+        skill2Size: 190,
+        deathSize: 148,
+        idleYOffset: 44,
+        yOffset: 50,
+        skillYOffset: 58
+      }
+    : {
+        idle: heroIdleSprite,
+        walk: heroWalkSprite,
+        attack: heroAttackSprite,
+        skill1: heroSkill1Sprite,
+        skill2: heroSkill2Sprite,
+        death: heroDeathSprite,
+        idleSize: 92,
+        walkSize: 118,
+        attackSize: 118,
+        skill1Size: 150,
+        skill2Size: 190,
+        deathSize: 118,
+        idleYOffset: 26,
+        yOffset: 38,
+        skillYOffset: 58
+      };
+}
+
 pathMask.canvas.width = canvas.width;
 pathMask.canvas.height = canvas.height;
 pathMask.ctx = pathMask.canvas.getContext("2d", { willReadFrequently: true });
@@ -854,7 +892,8 @@ const enemyColors = {
   iron_cavalry: "#b5b8bf",
   warlock: "#a7dcff",
   eagle_scout: "#f3d36b",
-  boss_lvbu: "#e55353"
+  boss_lvbu: "#e55353",
+  boss_liubei: "#e55353"
 };
 
 const state = {
@@ -919,6 +958,12 @@ function buildLookups() {
 
 const lookup = buildLookups();
 const bossSkills = Object.fromEntries(level.boss.skills.map((skill) => [skill.effect, skill]));
+const bossDashSkill = bossSkills.dash_forward || { name: "突进", distance: 0, cooldown: Infinity };
+const bossSpeedSkill = bossSkills.enemy_speed_up || { name: "号令", value: 0, duration: 0, cooldown: Infinity };
+ui.heroPortrait?.style.setProperty(
+  "--hero-portrait-image",
+  level.hero.id === "hero_lvbu" ? 'url("./assets/characters/heroes/lvbu/idle.png")' : 'url("./assets/hero_liubei.png")'
+);
 const heroStart = interpolatePath(state.hero.progress, pathById[state.hero.pathId]);
 state.hero.x = heroStart.x;
 state.hero.y = heroStart.y;
@@ -1141,7 +1186,7 @@ function createEnemy(enemyId, isBoss = false, pathId = null) {
   const pos = interpolatePath(0, path);
   return {
     ...base,
-    id: isBoss ? "boss_lvbu" : enemyId,
+    id: isBoss ? base.id : enemyId,
     uid: state.nextEnemyId++,
     maxHp: base.hp,
     currentHp: base.hp,
@@ -1156,8 +1201,8 @@ function createEnemy(enemyId, isBoss = false, pathId = null) {
     attackCooldown: 0,
     attackTimer: 0,
     attackDuration: 0,
-    dashCooldown: isBoss ? bossSkills.dash_forward.cooldown : 0,
-    roarCooldown: isBoss ? bossSkills.enemy_speed_up.cooldown : 0,
+    dashCooldown: isBoss ? bossDashSkill.cooldown : 0,
+    roarCooldown: isBoss ? bossSpeedSkill.cooldown : 0,
     isBoss
   };
 }
@@ -1270,7 +1315,7 @@ function damageHero(amount, sourceName) {
   hero.duelEnemyUid = null;
   state.heroMoveMode = false;
   AudioSystem.heroDeath();
-  log(`${sourceName} 击倒刘备，30s 后复活`);
+  log(`${sourceName} 击倒${level.hero.name}，${level.hero.revive_cooldown || 30}s 后复活`);
 }
 
 function heroEngageRange(enemy) {
@@ -1304,14 +1349,14 @@ function refreshHeroDuel() {
     .filter((enemy) => enemy.currentHp > 0 && distance(enemy, hero) <= heroEngageRange(enemy))
     .sort((a, b) => b.progress - a.progress)[0];
   hero.duelEnemyUid = next ? next.uid : null;
-  if (next) log(`刘备迎战${next.name}`);
+  if (next) log(`${level.hero.name}迎战${next.name}`);
   return next || null;
 }
 
 function killEnemy(enemy) {
   state.gold += enemy.reward_gold || 0;
   if (enemy.uid === state.hero.duelEnemyUid) state.hero.duelEnemyUid = null;
-  if (enemy.isBoss) log("吕布被击败");
+  if (enemy.isBoss) log(`${enemy.name}被击败`);
 }
 
 function updateSpawning(dt) {
@@ -1328,13 +1373,13 @@ function updateSpawning(dt) {
     if (state.bossSpawnTimer <= 0) {
       state.enemies.push(createEnemy(wave.boss, true));
       state.bossSpawnTimer = null;
-      log("吕布登场");
+      log(`${lookup.boss.name}登场`);
     }
   }
 }
 
 function updateEnemies(dt) {
-  const speedMultiplier = state.bossSpeedBuffTimer > 0 ? 1 + bossSkills.enemy_speed_up.value : 1;
+  const speedMultiplier = state.bossSpeedBuffTimer > 0 ? 1 + bossSpeedSkill.value : 1;
   const duelEnemy = refreshHeroDuel();
   state.enemies.forEach((enemy) => {
     enemy.attackCooldown = Math.max(0, enemy.attackCooldown - dt);
@@ -1348,14 +1393,14 @@ function updateEnemies(dt) {
       enemy.dashCooldown -= dt;
       enemy.roarCooldown -= dt;
       if (enemy.dashCooldown <= 0) {
-        enemy.progress += bossSkills.dash_forward.distance;
-        enemy.dashCooldown = bossSkills.dash_forward.cooldown;
-        log("吕布使用方天冲锋");
+        enemy.progress += bossDashSkill.distance;
+        enemy.dashCooldown = bossDashSkill.cooldown;
+        log(`${enemy.name}使用${bossDashSkill.name}`);
       }
       if (enemy.roarCooldown <= 0) {
-        state.bossSpeedBuffTimer = bossSkills.enemy_speed_up.duration;
-        enemy.roarCooldown = bossSkills.enemy_speed_up.cooldown;
-        log("吕布使用战神怒吼");
+        state.bossSpeedBuffTimer = bossSpeedSkill.duration;
+        enemy.roarCooldown = bossSpeedSkill.cooldown;
+        log(`${enemy.name}使用${bossSpeedSkill.name}`);
       }
     }
 
@@ -1377,6 +1422,8 @@ function updateEnemies(dt) {
                   ? eagleScoutAttackSprite
                   : enemy.id === "boss_lvbu"
                     ? lvbuAttackSprite
+                    : enemy.id === "boss_liubei"
+                      ? heroAttackSprite
                     : null;
         if (enemyAttackSprite) {
           enemy.attackDuration = enemyAttackSprite.frameCount / enemyAttackSprite.fps;
@@ -1542,7 +1589,7 @@ function updateHero(dt) {
       hero.isDead = false;
       hero.action = null;
       hero.deathTimer = 0;
-      log("刘备复活，可再次投入战斗");
+      log(`${level.hero.name}复活，可再次投入战斗`);
     }
     return;
   }
@@ -1589,7 +1636,8 @@ function updateHero(dt) {
     if (target) {
       dealDamage(target, level.hero.attack, "physical");
       hero.cooldown = level.hero.attack_interval;
-      hero.attackDuration = heroAttackSprite.frameCount / heroAttackSprite.fps;
+      const sprites = defenderSpriteSet();
+      hero.attackDuration = sprites.attack.frameCount / sprites.attack.fps;
       hero.attackTimer = hero.attackDuration;
       hero.action = "attack";
       hero.facing = target.x < hero.x ? -1 : 1;
@@ -1673,24 +1721,26 @@ function useBuffSkill() {
   const skill = level.hero.skills[0];
   if (state.hero.buffCooldown > 0 || state.hero.isDead || state.gameOver) return;
   const hitCount = damageEnemiesAroundHero(skill, "physical");
+  const sprites = defenderSpriteSet();
   state.hero.buffCooldown = skill.cooldown;
-  state.hero.attackDuration = heroSkill1Sprite.ready ? heroSkill1Sprite.frameCount / heroSkill1Sprite.fps : 0.35;
+  state.hero.attackDuration = sprites.skill1.ready ? sprites.skill1.frameCount / sprites.skill1.fps : 0.35;
   state.hero.attackTimer = state.hero.attackDuration;
   state.hero.action = "skill1";
   AudioSystem.heroAttack(true);
-  log(`刘备释放${skill.name}，命中 ${hitCount} 个敌军`);
+  log(`${level.hero.name}释放${skill.name}，命中 ${hitCount} 个敌军`);
 }
 
 function useLineSkill() {
   const skill = level.hero.skills[1];
   if (state.hero.lineCooldown > 0 || state.hero.isDead || state.gameOver) return;
+  const sprites = defenderSpriteSet();
   const hitCount = damageEnemiesAroundHero(skill, "magic");
   state.hero.lineCooldown = skill.cooldown;
-  state.hero.attackDuration = heroSkill2Sprite.frameCount / heroSkill2Sprite.fps;
+  state.hero.attackDuration = sprites.skill2.ready ? sprites.skill2.frameCount / sprites.skill2.fps : 0.35;
   state.hero.attackTimer = state.hero.attackDuration;
   state.hero.action = "skill2";
   AudioSystem.heroAttack(true);
-  log(`刘备释放${skill.name}，造成魔法伤害，命中 ${hitCount} 个敌军`);
+  log(`${level.hero.name}释放${skill.name}，造成魔法伤害，命中 ${hitCount} 个敌军`);
 }
 
 function updateProjectiles(dt) {
@@ -1956,6 +2006,24 @@ function getAnimatedEnemySprite(enemy) {
                   shadowH: 12,
                   attackFacesRight: false
                 }
+              : enemy.id === "boss_liubei"
+                ? {
+                    walk: heroWalkSprite,
+                    walkFront: heroWalkSprite,
+                    walkBack: heroWalkSprite,
+                    attack: heroAttackSprite,
+                    walkSize: 118,
+                    attackSize: 128,
+                    yOffset: 38,
+                    attackYOffset: 42,
+                    healthY: -74,
+                    labelY: 38,
+                    shadowX: 2,
+                    shadowY: 18,
+                    shadowW: 28,
+                    shadowH: 10,
+                    attackFacesRight: false
+                  }
         : null;
   if (!spriteSet) return null;
 
@@ -2040,7 +2108,7 @@ function drawEnemy(enemy) {
     ctx.fillStyle = "#fff8dc";
     ctx.font = `700 ${scaled(11)}px sans-serif`;
     ctx.textAlign = "center";
-    ctx.fillText(enemy.isBoss ? "吕布" : enemy.name.slice(2, 4), 0, radius + scaled(15));
+    ctx.fillText(enemy.isBoss ? enemy.name : enemy.name.slice(2, 4), 0, radius + scaled(15));
     ctx.restore();
 }
 
@@ -2069,6 +2137,7 @@ function drawHeroSprite(sprite, frameIndex, width, height, yOffset, flip = false
 }
 
 function drawHero() {
+  const sprites = defenderSpriteSet();
   ctx.save();
   ctx.translate(state.hero.x, state.hero.y);
   ctx.fillStyle = "rgb(0 0 0 / 0.34)";
@@ -2085,37 +2154,37 @@ function drawHero() {
   }
 
   if (state.hero.isDead) {
-    if (heroDeathSprite.ready) {
-      const frameIndex = Math.min(heroDeathSprite.frameCount - 1, Math.floor(state.hero.deathTimer * heroDeathSprite.fps));
-      drawHeroSprite(heroDeathSprite, frameIndex, scaled(118), scaled(118), scaled(38), state.hero.facing > 0);
+    if (sprites.death.ready) {
+      const frameIndex = Math.min(sprites.death.frameCount - 1, Math.floor(state.hero.deathTimer * sprites.death.fps));
+      drawHeroSprite(sprites.death, frameIndex, scaled(sprites.deathSize), scaled(sprites.deathSize), scaled(sprites.yOffset), state.hero.facing > 0);
     }
     ctx.restore();
     return;
   }
 
-  const shouldPlayWalk = Boolean(state.hero.moveTarget) && heroWalkSprite.ready;
-  const shouldPlaySkill1 = state.hero.action === "skill1" && state.hero.attackTimer > 0 && heroSkill1Sprite.ready;
-  const shouldPlaySkill2 = state.hero.action === "skill2" && state.hero.attackTimer > 0 && heroSkill2Sprite.ready;
-  const shouldPlayAttack = state.hero.attackTimer > 0 && heroAttackSprite.ready;
-  const shouldPlayIdle = !state.heroMoveMode && !state.hero.moveTarget && state.hero.attackTimer <= 0 && heroIdleSprite.ready;
+  const shouldPlayWalk = Boolean(state.hero.moveTarget) && sprites.walk.ready;
+  const shouldPlaySkill1 = state.hero.action === "skill1" && state.hero.attackTimer > 0 && sprites.skill1.ready;
+  const shouldPlaySkill2 = state.hero.action === "skill2" && state.hero.attackTimer > 0 && sprites.skill2.ready;
+  const shouldPlayAttack = state.hero.attackTimer > 0 && sprites.attack.ready;
+  const shouldPlayIdle = !state.heroMoveMode && !state.hero.moveTarget && state.hero.attackTimer <= 0 && sprites.idle.ready;
   if (shouldPlaySkill1) {
     const progress = 1 - state.hero.attackTimer / Math.max(0.001, state.hero.attackDuration || 1);
-    const frameIndex = Math.min(heroSkill1Sprite.frameCount - 1, Math.floor(progress * heroSkill1Sprite.frameCount));
-    drawHeroSprite(heroSkill1Sprite, frameIndex, scaled(150), scaled(150), scaled(48), state.hero.facing > 0);
+    const frameIndex = Math.min(sprites.skill1.frameCount - 1, Math.floor(progress * sprites.skill1.frameCount));
+    drawHeroSprite(sprites.skill1, frameIndex, scaled(sprites.skill1Size), scaled(sprites.skill1Size), scaled(sprites.skillYOffset), state.hero.facing > 0);
   } else if (shouldPlaySkill2) {
     const progress = 1 - state.hero.attackTimer / Math.max(0.001, state.hero.attackDuration || 1);
-    const frameIndex = Math.min(heroSkill2Sprite.frameCount - 1, Math.floor(progress * heroSkill2Sprite.frameCount));
-    drawHeroSprite(heroSkill2Sprite, frameIndex, scaled(190), scaled(190), scaled(58), state.hero.facing > 0);
+    const frameIndex = Math.min(sprites.skill2.frameCount - 1, Math.floor(progress * sprites.skill2.frameCount));
+    drawHeroSprite(sprites.skill2, frameIndex, scaled(sprites.skill2Size), scaled(sprites.skill2Size), scaled(sprites.skillYOffset), state.hero.facing > 0);
   } else if (shouldPlayAttack) {
     const progress = 1 - state.hero.attackTimer / Math.max(0.001, state.hero.attackDuration || 1);
-    const frameIndex = Math.min(heroAttackSprite.frameCount - 1, Math.floor(progress * heroAttackSprite.frameCount));
-    drawHeroSprite(heroAttackSprite, frameIndex, scaled(118), scaled(118), scaled(38), state.hero.facing > 0);
+    const frameIndex = Math.min(sprites.attack.frameCount - 1, Math.floor(progress * sprites.attack.frameCount));
+    drawHeroSprite(sprites.attack, frameIndex, scaled(sprites.attackSize), scaled(sprites.attackSize), scaled(sprites.yOffset), state.hero.facing > 0);
   } else if (shouldPlayWalk) {
-    const frameIndex = Math.floor(state.time * heroWalkSprite.fps) % heroWalkSprite.frameCount;
-    drawHeroSprite(heroWalkSprite, frameIndex, scaled(118), scaled(118), scaled(38), state.hero.facing > 0);
+    const frameIndex = Math.floor(state.time * sprites.walk.fps) % sprites.walk.frameCount;
+    drawHeroSprite(sprites.walk, frameIndex, scaled(sprites.walkSize), scaled(sprites.walkSize), scaled(sprites.yOffset), state.hero.facing > 0);
   } else if (shouldPlayIdle) {
-    const frameIndex = Math.floor(state.time * heroIdleSprite.fps) % heroIdleSprite.frameCount;
-    drawHeroSprite(heroIdleSprite, frameIndex, scaled(92), scaled(92), scaled(26));
+    const frameIndex = Math.floor(state.time * sprites.idle.fps) % sprites.idle.frameCount;
+    drawHeroSprite(sprites.idle, frameIndex, scaled(sprites.idleSize), scaled(sprites.idleSize), scaled(sprites.idleYOffset));
   } else if (heroImage.complete && heroImage.naturalWidth > 0) {
     const width = scaled(82);
     const height = scaled(82);
@@ -2493,7 +2562,7 @@ function renderUi() {
         ? "点道路放置"
         : "点战场英雄移动";
   ui.heroStatus.innerHTML = `
-    刘备 · 攻击 ${level.hero.attack}
+    ${level.hero.name} · 攻击 ${level.hero.attack}
     <div class="hero-hp" aria-label="英雄血量"><span style="width:${heroHpPercent}%"></span></div>
     <small>${Math.ceil(state.hero.hp)}/${state.hero.maxHp} · ${heroStateText}</small>
   `;
@@ -2501,9 +2570,9 @@ function renderUi() {
     ? `<span class="hero-revive-count">${Math.ceil(state.hero.reviveTimer)}</span>`
     : "";
   ui.skillBuff.disabled = state.hero.buffCooldown > 0 || state.hero.isDead;
-  ui.skillBuff.textContent = state.hero.isDead ? "倒地" : state.hero.buffCooldown > 0 ? `${state.hero.buffCooldown.toFixed(0)}s` : "旋斩";
+  ui.skillBuff.textContent = state.hero.isDead ? "倒地" : state.hero.buffCooldown > 0 ? `${state.hero.buffCooldown.toFixed(0)}s` : level.hero.skills[0].name.slice(0, 2);
   ui.skillLine.disabled = state.hero.lineCooldown > 0 || state.hero.isDead;
-  ui.skillLine.textContent = state.hero.isDead ? "倒地" : state.hero.lineCooldown > 0 ? `${state.hero.lineCooldown.toFixed(0)}s` : "剑气";
+  ui.skillLine.textContent = state.hero.isDead ? "倒地" : state.hero.lineCooldown > 0 ? `${state.hero.lineCooldown.toFixed(0)}s` : level.hero.skills[1].name.slice(0, 2);
   ui.togglePause.textContent = state.paused ? "▶" : "II";
   renderWaveButtons();
   updateTowerPopupState();
@@ -2692,7 +2761,7 @@ function moveHeroToPath(point) {
   state.hero.moveTarget = state.hero.movePath.shift() || null;
   state.hero.duelEnemyUid = null;
   state.heroMoveMode = false;
-  log(`刘备沿道路移动`);
+  log(`${level.hero.name}沿道路移动`);
   return true;
 }
 
@@ -2735,7 +2804,7 @@ canvas.addEventListener("click", (event) => {
     hideTowerPopup();
     state.heroMoveMode = true;
     AudioSystem.heroSelect();
-    log("已选中刘备，点击道路任意位置放置");
+    log(`已选中${level.hero.name}，点击道路任意位置放置`);
     return;
   }
 

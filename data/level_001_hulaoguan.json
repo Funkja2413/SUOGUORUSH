@@ -2,8 +2,8 @@
   "level_id": "L001",
   "level_name": "虎牢关",
   "battle_theme": "守关防御战",
-  "defender_faction": "联军",
-  "attacker_faction": "西凉军",
+  "defender_faction": "西凉军",
+  "attacker_faction": "联军",
   "base": {
     "max_hp": 20,
     "initial_hp": 20
@@ -12,55 +12,55 @@
     "initial_gold": 500
   },
   "hero": {
-    "id": "hero_liubei",
-    "name": "刘备",
+    "id": "hero_lvbu",
+    "name": "吕布",
     "type": "melee",
-    "max_hp": 1200,
-    "initial_hp": 1200,
+    "max_hp": 4000,
+    "initial_hp": 4000,
     "revive_cooldown": 30,
-    "attack": 120,
-    "attack_interval": 1.0,
+    "attack": 140,
+    "attack_interval": 1.5,
     "target_type": "ground",
     "skills": [
       {
-        "name": "双剑旋斩",
+        "name": "方天横扫",
         "type": "active",
         "effect": "aoe_damage",
-        "damage": 220,
-        "radius": 2.2,
+        "damage": 280,
+        "radius": 2.4,
         "cooldown": 25
       },
       {
-        "name": "龙魂剑气",
+        "name": "战神怒吼",
         "type": "active",
         "effect": "magic_damage",
-        "damage": 360,
-        "radius": 3.0,
+        "damage": 380,
+        "radius": 3.2,
         "cooldown": 40
       }
     ]
   },
   "boss": {
-    "id": "boss_lvbu",
-    "name": "吕布",
-    "hp": 4000,
-    "armor": 0.3,
+    "id": "boss_liubei",
+    "name": "刘备",
+    "hp": 1200,
+    "armor": 0.1,
     "move_speed": 1.0,
-    "attack": 140,
-    "attack_interval": 1.5,
+    "attack": 120,
+    "attack_interval": 1.0,
     "leak_damage": 5,
     "reward_gold": 300,
     "skills": [
       {
-        "name": "方天冲锋",
+        "name": "龙魂突进",
         "effect": "dash_forward",
-        "distance": 5,
+        "distance": 3,
         "cooldown": 12
       },
       {
-        "name": "战神怒吼",
+        "name": "仁德号令",
         "effect": "enemy_speed_up",
-        "value": 0.3,
+        "value": 0.2,
         "duration": 8,
         "cooldown": 18
       }
@@ -531,7 +531,7 @@
         { "enemy_id": "warlock", "count": 4 },
         { "enemy_id": "eagle_scout", "count": 4 }
       ],
-      "boss": "boss_lvbu"
+      "boss": "boss_liubei"
     }
   ],
   "star_rules": {

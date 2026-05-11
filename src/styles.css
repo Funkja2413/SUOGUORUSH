@@ -555,7 +555,7 @@ canvas {
   border: 3px solid #180f0c;
   background:
     linear-gradient(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.08)),
-    url("../assets/hero_liubei.png") center 20% / 118% auto no-repeat,
+    var(--hero-portrait-image, url("../assets/hero_liubei.png")) center 20% / 118% auto no-repeat,
     #5ea3db;
   box-shadow: inset 0 -8px 0 rgb(0 0 0 / 0.18);
 }
