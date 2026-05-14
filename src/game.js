@@ -1478,7 +1478,14 @@ async function preloadGameAssets() {
   prepareLoadedSprites();
   ui.menuStart.disabled = false;
   ui.menuRanking.disabled = false;
-  if (!holdPreloadScreen) ui.preloadScreen.classList.add("is-complete");
+  if (holdPreloadScreen) {
+    ui.preloadScreen.classList.remove("is-complete");
+    ui.preloadScreen.style.opacity = "1";
+    ui.preloadScreen.style.visibility = "visible";
+    ui.preloadScreen.style.pointerEvents = "auto";
+  } else {
+    ui.preloadScreen.classList.add("is-complete");
+  }
 }
 
 const paths = [

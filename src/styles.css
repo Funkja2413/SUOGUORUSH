@@ -85,11 +85,11 @@ canvas {
 }
 
 .preload-screen {
+  --loading-meter-bottom: 10.6%;
   z-index: 40;
-  display: grid;
-  grid-template-rows: 1fr auto 1.12fr auto 0.34fr;
-  justify-items: center;
-  align-items: center;
+  display: block;
+  position: absolute;
+  inset: 0;
   background:
     linear-gradient(rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.72)),
     url("../assets/start_background.jpg") center / cover no-repeat,
@@ -99,35 +99,22 @@ canvas {
     visibility 220ms ease;
 }
 
-.preload-screen::before,
-.preload-screen::after {
-  content: "";
-}
-
 .preload-screen.is-complete {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
 
-.preload-logo {
-  grid-row: 2;
-  width: min(34vw, 690px);
-  min-width: 280px;
-  max-height: 44vh;
-  object-fit: contain;
-  filter: drop-shadow(0 10px 20px rgb(0 0 0 / 0.48));
-  user-select: none;
-  pointer-events: none;
-}
-
 .preload-meter {
-  grid-row: 4;
+  position: absolute;
+  left: 50%;
+  bottom: var(--loading-meter-bottom);
   width: min(39vw, 790px);
   min-width: 340px;
   display: grid;
   justify-items: center;
   gap: 16px;
+  transform: translateX(-50%);
 }
 
 .preload-bar {
