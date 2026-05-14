@@ -29,28 +29,44 @@
 - 小兵攻击：轻武器挥砍或撞击。
 - 小兵死亡：短促倒地/盔甲落地。
 
-## 建议文件名
+## 当前运行素材
 
 ```text
-assets/audio/bgm_hulaoguan_battle_loop.ogg
-assets/audio/bgm_hulaoguan_boss_loop.ogg
-assets/audio/stinger_wave_start.ogg
-assets/audio/tower_build_01.wav
-assets/audio/tower_upgrade_01.wav
-assets/audio/tower_dismantle_01.wav
-assets/audio/tower_arrow_shot_01.wav
-assets/audio/tower_crossbow_shot_01.wav
-assets/audio/tower_magic_shot_01.wav
-assets/audio/tower_fire_shot_01.wav
-assets/audio/tower_stone_shot_01.wav
-assets/audio/hero_select_01.wav
-assets/audio/hero_attack_01.wav
-assets/audio/hero_skill_01.wav
-assets/audio/hero_death_01.wav
-assets/audio/enemy_attack_01.wav
-assets/audio/enemy_death_01.wav
+assets/audio/bgm_hulaoguan_ambient.mp3
+assets/audio/bgm_hulaoguan_boss_loop.wav
+assets/audio/stinger_wave_start_short.wav
+assets/audio/tower_build_01.ogg
+assets/audio/tower_upgrade_01.ogg
+assets/audio/tower_dismantle_01.ogg
+assets/audio/tower_arrow_shot_01.ogg
+assets/audio/tower_crossbow_shot_01.ogg
+assets/audio/tower_magic_shot_01.ogg
+assets/audio/tower_fire_shot_01.ogg
+assets/audio/tower_stone_shot_01.ogg
+assets/audio/hero_select_01.ogg
+assets/audio/hero_attack_01.ogg
+assets/audio/hero_skill_01.ogg
+assets/audio/hero_death_01.ogg
+assets/audio/enemy_attack_sword_01.ogg
+assets/audio/enemy_attack_sword_02.ogg
+assets/audio/enemy_attack_sword_03.ogg
+assets/audio/enemy_attack_cavalry_heavy_01.ogg
+assets/audio/enemy_attack_cavalry_heavy_02.ogg
+assets/audio/enemy_attack_cavalry_trot_01.ogg
+assets/audio/enemy_attack_warlock_spell_01.ogg
+assets/audio/enemy_attack_warlock_spell_02.ogg
+assets/audio/enemy_attack_eagle_screech_01.ogg
+assets/audio/enemy_attack_eagle_screech_02.ogg
+assets/audio/enemy_death_shout_01.wav
+assets/audio/enemy_death_shout_02.wav
+assets/audio/enemy_death_shout_03.wav
+assets/audio/enemy_death_cavalry_01.wav
+assets/audio/enemy_death_cavalry_02.wav
+assets/audio/enemy_death_warlock_01.mp3
+assets/audio/enemy_death_warlock_02.mp3
+assets/audio/enemy_death_eagle_screech_01.ogg
 ```
 
 ## 当前审核结论
 
-`review_audio/` 中由脚本生成的第一版 WAV 只适合作为触发点验证，不符合最终审美方向。后续不应继续在这个电子合成方向上精修，应替换为真实授权音乐与音效素材。
+试听与下载源素材已从运行包中移除。主干只保留游戏实际加载的音频文件和 `assets/audio/CREDITS.md` 授权说明。

@@ -12,6 +12,7 @@ Idle spritesheets:
 - 4 columns x 3 rows.
 - 12 frames total.
 - Each frame should be 4:3.
+- Keep the longest sheet edge near 2048px for the runtime package.
 - Current default playback is 4fps.
 
 Current slots:

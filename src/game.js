@@ -16,33 +16,43 @@ const ui = {
   towerPopup: document.querySelector("#towerPopup"),
   towerTooltip: document.querySelector("#towerTooltip"),
   waveInfo: document.querySelector("#waveInfo"),
-  logPanel: document.querySelector("#logPanel"),
-  toggleLog: document.querySelector("#toggleLog"),
-  log: document.querySelector("#log"),
   heroPortrait: document.querySelector(".hero-portrait"),
   heroStatus: document.querySelector("#heroStatus"),
   waveControl: document.querySelector("#waveControl"),
   toggleMusic: document.querySelector("#toggleMusic"),
   toggleSfx: document.querySelector("#toggleSfx"),
   togglePause: document.querySelector("#togglePause"),
+  backHome: document.querySelector("#backHome"),
   restart: document.querySelector("#restart"),
   skillBuff: document.querySelector("#skillBuff"),
   skillLine: document.querySelector("#skillLine"),
   resultModal: document.querySelector("#resultModal"),
+  resultStars: document.querySelector("#resultStars"),
   resultTitle: document.querySelector("#resultTitle"),
   resultBody: document.querySelector("#resultBody"),
-  closeResult: document.querySelector("#closeResult")
+  resultScore: document.querySelector("#resultScore"),
+  resultRanking: document.querySelector("#resultRanking"),
+  resultNext: document.querySelector("#resultNext"),
+  resultRestart: document.querySelector("#resultRestart"),
+  resultBack: document.querySelector("#resultBack"),
+  rankingModal: document.querySelector("#rankingModal"),
+  rankingList: document.querySelector("#rankingList"),
+  closeRanking: document.querySelector("#closeRanking")
 };
 
 const appState = {
   mode: "menu",
-  introSrc: "./assets/intro_cutscene.mp4"
+  introSrc: "./assets/intro_cutscene.mp4?v=20260512-intro-v2"
 };
 
-const level = await fetch("./data/level_001_hulaoguan.json").then((res) => res.json());
+const level = await fetch("./data/level_001_hulaoguan.json?v=20260514-lvbu-survival-v1").then((res) => res.json());
 const WORLD_SCALE = 2;
 const scaled = (value) => value * WORLD_SCALE;
 const NAV_CELL = scaled(12);
+const UI_BASE_STAGE_WIDTH = 1280;
+const UI_MIN_SCALE = 0.75;
+const RANKING_STORAGE_KEY = `sanguo-rush-ranking:${level.level_id}`;
+const MAX_RANKING_RECORDS = 20;
 
 const mapImage = new Image();
 mapImage.src = "./assets/hulaoguan_map.png?v=20260509-video-env-v3";
@@ -68,8 +78,62 @@ const AudioSystem = (() => {
     heroAttack: "./assets/audio/hero_attack_01.ogg",
     heroSkill: "./assets/audio/hero_skill_01.ogg",
     heroDeath: "./assets/audio/hero_death_01.ogg",
-    enemyAttack: "./assets/audio/enemy_attack_01.ogg",
-    enemyDeath: "./assets/audio/enemy_death_01.ogg",
+    enemySfx: {
+      default: {
+        attack: [
+          "./assets/audio/enemy_attack_sword_01.ogg",
+          "./assets/audio/enemy_attack_sword_02.ogg",
+          "./assets/audio/enemy_attack_sword_03.ogg"
+        ],
+        death: [
+          "./assets/audio/enemy_death_shout_01.wav",
+          "./assets/audio/enemy_death_shout_02.wav",
+          "./assets/audio/enemy_death_shout_03.wav"
+        ]
+      },
+      knife_soldier: {
+        attack: [
+          "./assets/audio/enemy_attack_sword_01.ogg",
+          "./assets/audio/enemy_attack_sword_02.ogg",
+          "./assets/audio/enemy_attack_sword_03.ogg"
+        ],
+        death: [
+          "./assets/audio/enemy_death_shout_01.wav",
+          "./assets/audio/enemy_death_shout_02.wav",
+          "./assets/audio/enemy_death_shout_03.wav"
+        ]
+      },
+      iron_cavalry: {
+        attack: [
+          "./assets/audio/enemy_attack_cavalry_heavy_01.ogg",
+          "./assets/audio/enemy_attack_cavalry_heavy_02.ogg",
+          "./assets/audio/enemy_attack_cavalry_trot_01.ogg"
+        ],
+        death: [
+          "./assets/audio/enemy_death_cavalry_01.wav",
+          "./assets/audio/enemy_death_cavalry_02.wav"
+        ]
+      },
+      warlock: {
+        attack: [
+          "./assets/audio/enemy_attack_warlock_spell_01.ogg",
+          "./assets/audio/enemy_attack_warlock_spell_02.ogg"
+        ],
+        death: [
+          "./assets/audio/enemy_death_warlock_01.mp3",
+          "./assets/audio/enemy_death_warlock_02.mp3"
+        ]
+      },
+      eagle_scout: {
+        attack: [
+          "./assets/audio/enemy_attack_eagle_screech_01.ogg",
+          "./assets/audio/enemy_attack_eagle_screech_02.ogg"
+        ],
+        death: [
+          "./assets/audio/enemy_death_eagle_screech_01.ogg"
+        ]
+      }
+    },
     projectiles: {
       arrow_tower: "./assets/audio/tower_arrow_shot_01.ogg",
       crossbow_tower: "./assets/audio/tower_crossbow_shot_01.ogg",
@@ -92,6 +156,7 @@ const AudioSystem = (() => {
     enemyAttack: 0.42,
     enemyDeath: 0.46,
     projectile: 0.34,
+    uiHover: 0.18,
     result: 0.55
   };
   let musicEnabled = true;
@@ -100,6 +165,7 @@ const AudioSystem = (() => {
   let currentMusic = null;
   let currentMusicKey = null;
   let musicDuckTimer = null;
+  let sfxAudioContext = null;
   const lastPlayed = new Map();
   const samplePool = new Map();
 
@@ -124,12 +190,72 @@ const AudioSystem = (() => {
       playThrottled(name, throttle, () => playSample(name, src, volume, 0));
       return;
     }
-    if (!sfxEnabled || !unlocked || !src) return;
-    const base = samplePool.get(src) || makeAudio(src, { volume });
-    samplePool.set(src, base);
+    const source = Array.isArray(src) ? src[Math.floor(Math.random() * src.length)] : src;
+    if (!sfxEnabled || !unlocked || !source) return;
+    const base = samplePool.get(source) || makeAudio(source, { volume });
+    samplePool.set(source, base);
     const audio = base.cloneNode();
     audio.volume = volume;
     audio.play().catch(() => {});
+  }
+
+  function getSfxAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    sfxAudioContext ||= new AudioContextClass();
+    return sfxAudioContext;
+  }
+
+  function resumeSfxAudioContext() {
+    const ctx = getSfxAudioContext();
+    if (ctx?.state === "suspended") ctx.resume().catch(() => {});
+  }
+
+  function playHoverTone() {
+    if (!sfxEnabled || !unlocked) return;
+    const now = performance.now() / 1000;
+    if (now - (lastPlayed.get("uiHoverTone") || -Infinity) < 0.055) return;
+    lastPlayed.set("uiHoverTone", now);
+
+    const ctx = getSfxAudioContext();
+    if (!ctx) {
+      playSample("uiHoverFallback", sources.heroSelect, baseVolumes.uiHover, 0.06);
+      return;
+    }
+
+    const start = ctx.currentTime;
+    const duration = 0.12;
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(620, start);
+    oscillator.frequency.exponentialRampToValueAtTime(780, start + duration);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1200, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(baseVolumes.uiHover, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration + 0.02);
+  }
+
+  function playSoldierDeathShout(enemy) {
+    if (!sfxEnabled || !unlocked || !enemy) return;
+    const enemySfx = sources.enemySfx[enemy.id] || sources.enemySfx.default;
+    playSample(`enemyDeath:${enemy.uid}`, enemySfx.death, enemy.isBoss ? baseVolumes.enemyDeath * 1.2 : baseVolumes.enemyDeath, 0.18);
+  }
+
+  function playEnemyWeaponHit(enemyId = "enemy") {
+    if (!sfxEnabled || !unlocked) return;
+    const heavy = enemyId === "iron_cavalry" || enemyId === "boss_liubei";
+    const enemySfx = sources.enemySfx[enemyId] || sources.enemySfx.default;
+    playSample(`enemyAttack:${enemyId}`, enemySfx.attack, heavy ? baseVolumes.enemyAttack * 1.18 : baseVolumes.enemyAttack, 0.09);
   }
 
   function setMusic(key) {
@@ -159,9 +285,10 @@ const AudioSystem = (() => {
     button.classList.toggle("sound-on", enabled);
     button.classList.toggle("is-off", !enabled);
     button.classList.toggle("is-on", enabled);
+    button.setAttribute("aria-pressed", String(enabled));
     const strong = button.querySelector("strong");
     if (strong) strong.textContent = enabled ? "ON" : "OFF";
-    else button.textContent = enabled ? onText : offText;
+    else if (!button.classList.contains("icon-only")) button.textContent = enabled ? onText : offText;
   }
 
   function syncUi() {
@@ -189,6 +316,7 @@ const AudioSystem = (() => {
   return {
     async unlock() {
       unlocked = true;
+      resumeSfxAudioContext();
       setMusic(currentMusicKey || "battle");
       syncUi();
     },
@@ -206,6 +334,9 @@ const AudioSystem = (() => {
     },
     uiSelect() {
       playSample("uiSelect", sources.heroSelect, baseVolumes.heroSelect, 0.08);
+    },
+    uiHover() {
+      playHoverTone();
     },
     setMusicWave(index) {
       setMusic(index >= level.waves.length - 1 ? "boss" : "battle");
@@ -236,11 +367,11 @@ const AudioSystem = (() => {
     heroDeath() {
       playSample("heroDeath", sources.heroDeath, baseVolumes.heroDeath, 0.5);
     },
-    enemyAttack() {
-      playSample("enemyAttack", sources.enemyAttack, baseVolumes.enemyAttack, 0.08);
+    enemyAttack(enemyId) {
+      playEnemyWeaponHit(enemyId);
     },
     enemyDeath(enemy) {
-      playSample(`enemyDeath:${enemy.uid}`, sources.enemyDeath, enemy.isBoss ? baseVolumes.enemyDeath * 1.2 : baseVolumes.enemyDeath, 0.2);
+      playSoldierDeathShout(enemy);
     },
     result(victory) {
       playSample(victory ? "resultVictory" : "resultDefeat", victory ? sources.upgrade : sources.heroDeath, baseVolumes.result, 0.5);
@@ -249,14 +380,12 @@ const AudioSystem = (() => {
 })();
 const pathMaskImage = new Image();
 pathMaskImage.src = "./assets/path_mask.png";
-const heroImage = new Image();
-heroImage.src = "./assets/hero_liubei.png";
 const heroIdleImage = new Image();
 heroIdleImage.src = "./assets/characters/heroes/liubei/idle.png";
 const heroWalkImage = new Image();
 heroWalkImage.src = "./assets/characters/heroes/liubei/walk.png";
 const heroAttackImage = new Image();
-heroAttackImage.src = "./assets/characters/heroes/liubei/attack.png";
+heroAttackImage.src = "./assets/characters/heroes/liubei/attack.png?v=20260514-liubei-attack-v2";
 const heroSkill1Image = new Image();
 heroSkill1Image.src = "./assets/characters/heroes/liubei/skill1.png";
 const heroSkill2Image = new Image();
@@ -630,15 +759,16 @@ function defenderSpriteSet() {
         skill1: lvbuSkill1Sprite,
         skill2: lvbuSkill2Sprite,
         death: lvbuDeathSprite,
-        idleSize: 132,
+        sourceFacesRight: true,
+        idleSize: 148,
         walkSize: 148,
-        attackSize: 154,
-        skill1Size: 176,
-        skill2Size: 190,
+        attackSize: 148,
+        skill1Size: 148,
+        skill2Size: 148,
         deathSize: 148,
-        idleYOffset: 44,
+        idleYOffset: 50,
         yOffset: 50,
-        skillYOffset: 58
+        skillYOffset: 50
       }
     : {
         idle: heroIdleSprite,
@@ -647,15 +777,16 @@ function defenderSpriteSet() {
         skill1: heroSkill1Sprite,
         skill2: heroSkill2Sprite,
         death: heroDeathSprite,
-        idleSize: 92,
+        sourceFacesRight: false,
+        idleSize: 118,
         walkSize: 118,
         attackSize: 118,
-        skill1Size: 150,
-        skill2Size: 190,
+        skill1Size: 118,
+        skill2Size: 118,
         deathSize: 118,
-        idleYOffset: 26,
+        idleYOffset: 38,
         yOffset: 38,
-        skillYOffset: 58
+        skillYOffset: 38
       };
 }
 
@@ -668,7 +799,7 @@ pathMaskImage.addEventListener("load", () => {
   buildPathMaskGrid();
   pathMask.ready = true;
 });
-function prepareSpriteSheet(image, sprite) {
+function prepareSpriteSheet(image, sprite, options = {}) {
   sprite.canvas.width = image.naturalWidth;
   sprite.canvas.height = image.naturalHeight;
   sprite.frameWidth = image.naturalWidth / sprite.columns;
@@ -676,8 +807,25 @@ function prepareSpriteSheet(image, sprite) {
 
   const spriteCtx = sprite.canvas.getContext("2d", { willReadFrequently: true });
   spriteCtx.drawImage(image, 0, 0);
+  if (options.preserveOriginal) {
+    sprite.ready = true;
+    return;
+  }
+
   const imageData = spriteCtx.getImageData(0, 0, sprite.canvas.width, sprite.canvas.height);
   const pixels = imageData.data;
+  let hasSourceAlpha = false;
+  for (let index = 3; index < pixels.length; index += 4) {
+    if (pixels[index] < 250) {
+      hasSourceAlpha = true;
+      break;
+    }
+  }
+  if (hasSourceAlpha) {
+    sprite.ready = true;
+    return;
+  }
+
   for (let index = 0; index < pixels.length; index += 4) {
     const r = pixels[index];
     const g = pixels[index + 1];
@@ -729,28 +877,28 @@ lvbuDeathImage.addEventListener("load", () => {
   prepareSpriteSheet(lvbuDeathImage, lvbuDeathSprite);
 });
 knifeSoldierWalkImage.addEventListener("load", () => {
-  prepareSpriteSheet(knifeSoldierWalkImage, knifeSoldierWalkSprite);
+  prepareSpriteSheet(knifeSoldierWalkImage, knifeSoldierWalkSprite, { preserveOriginal: true });
 });
 knifeSoldierWalkFrontImage.addEventListener("load", () => {
-  prepareSpriteSheet(knifeSoldierWalkFrontImage, knifeSoldierWalkFrontSprite);
+  prepareSpriteSheet(knifeSoldierWalkFrontImage, knifeSoldierWalkFrontSprite, { preserveOriginal: true });
 });
 knifeSoldierWalkBackImage.addEventListener("load", () => {
-  prepareSpriteSheet(knifeSoldierWalkBackImage, knifeSoldierWalkBackSprite);
+  prepareSpriteSheet(knifeSoldierWalkBackImage, knifeSoldierWalkBackSprite, { preserveOriginal: true });
 });
 knifeSoldierAttackImage.addEventListener("load", () => {
-  prepareSpriteSheet(knifeSoldierAttackImage, knifeSoldierAttackSprite);
+  prepareSpriteSheet(knifeSoldierAttackImage, knifeSoldierAttackSprite, { preserveOriginal: true });
 });
 ironCavalryWalkImage.addEventListener("load", () => {
-  prepareSpriteSheet(ironCavalryWalkImage, ironCavalryWalkSprite);
+  prepareSpriteSheet(ironCavalryWalkImage, ironCavalryWalkSprite, { preserveOriginal: true });
 });
 ironCavalryWalkFrontImage.addEventListener("load", () => {
-  prepareSpriteSheet(ironCavalryWalkFrontImage, ironCavalryWalkFrontSprite);
+  prepareSpriteSheet(ironCavalryWalkFrontImage, ironCavalryWalkFrontSprite, { preserveOriginal: true });
 });
 ironCavalryWalkBackImage.addEventListener("load", () => {
-  prepareSpriteSheet(ironCavalryWalkBackImage, ironCavalryWalkBackSprite);
+  prepareSpriteSheet(ironCavalryWalkBackImage, ironCavalryWalkBackSprite, { preserveOriginal: true });
 });
 ironCavalryAttackImage.addEventListener("load", () => {
-  prepareSpriteSheet(ironCavalryAttackImage, ironCavalryAttackSprite);
+  prepareSpriteSheet(ironCavalryAttackImage, ironCavalryAttackSprite, { preserveOriginal: true });
 });
 warlockWalkImage.addEventListener("load", () => {
   prepareSpriteSheet(warlockWalkImage, warlockWalkSprite);
@@ -896,31 +1044,8 @@ const enemyColors = {
   boss_liubei: "#e55353"
 };
 
-const state = {
-  hp: level.base.initial_hp,
-  gold: level.economy.initial_gold,
-  waveIndex: 0,
-  waveActive: false,
-  waveStartCountdown: null,
-  paused: true,
-  speed: 1,
-  selectedTowerId: level.towers[0].id,
-  selectedSlot: null,
-  heroMoveMode: false,
-  hoveredSlot: null,
-  slots: level.map.tower_slots.map((slot) => ({
-    ...slot,
-    ...slotLayout[slot.position],
-    tower: null
-  })),
-  enemies: [],
-  projectiles: [],
-  towerAnimations: [],
-  spawnQueue: [],
-  spawnTimer: 0,
-  bossSpawnTimer: null,
-  nextEnemyId: 1,
-  hero: {
+function createInitialHeroState() {
+  return {
     pathId: "left_main",
     progress: 14.4,
     x: 0,
@@ -940,10 +1065,39 @@ const state = {
     facing: 1,
     buffCooldown: 0,
     lineCooldown: 0
-  },
+  };
+}
+
+const state = {
+  hp: level.base.initial_hp,
+  gold: level.economy.initial_gold,
+  waveIndex: 0,
+  waveActive: false,
+  waveStartCountdown: null,
+  paused: true,
+  speed: 1,
+  selectedTowerId: level.towers[0].id,
+  selectedSlot: null,
+  heroMoveMode: false,
+  hoveredSlot: null,
+  slots: level.map.tower_slots.map((slot) => ({
+    ...slot,
+    ...slotLayout[slot.position],
+    tower: null
+  })),
+  enemies: [],
+  projectiles: [],
+  fireImpacts: [],
+  towerAnimations: [],
+  spawnQueue: [],
+  spawnTimer: 0,
+  bossSpawnTimer: null,
+  nextEnemyId: 1,
+  hero: createInitialHeroState(),
   bossSpeedBuffTimer: 0,
   gameOver: false,
   victory: false,
+  uiScale: 1,
   time: 0,
   lastTime: performance.now()
 };
@@ -962,16 +1116,16 @@ const bossDashSkill = bossSkills.dash_forward || { name: "突进", distance: 0, 
 const bossSpeedSkill = bossSkills.enemy_speed_up || { name: "号令", value: 0, duration: 0, cooldown: Infinity };
 ui.heroPortrait?.style.setProperty(
   "--hero-portrait-image",
-  level.hero.id === "hero_lvbu" ? 'url("./assets/characters/heroes/lvbu/idle.png")' : 'url("./assets/hero_liubei.png")'
+  'url("../assets/ui/hero_lvbu_portrait.png?v=20260512-hud-portrait-fix")'
 );
 const heroStart = interpolatePath(state.hero.progress, pathById[state.hero.pathId]);
 state.hero.x = heroStart.x;
 state.hero.y = heroStart.y;
 
-function log(message) {
-  const line = document.createElement("div");
-  line.textContent = message;
-  ui.log.prepend(line);
+function resetHeroPosition() {
+  const heroStart = interpolatePath(state.hero.progress, pathById[state.hero.pathId]);
+  state.hero.x = heroStart.x;
+  state.hero.y = heroStart.y;
 }
 
 function distance(a, b) {
@@ -1201,6 +1355,9 @@ function createEnemy(enemyId, isBoss = false, pathId = null) {
     attackCooldown: 0,
     attackTimer: 0,
     attackDuration: 0,
+    action: null,
+    bossHeroSkillIndex: 0,
+    showHealthBar: false,
     dashCooldown: isBoss ? bossDashSkill.cooldown : 0,
     roarCooldown: isBoss ? bossSpeedSkill.cooldown : 0,
     isBoss
@@ -1232,7 +1389,6 @@ function startWave(pathId = null) {
   state.spawnQueue = flattenWaveUnits(wave);
   state.spawnTimer = 0;
   state.bossSpawnTimer = wave.boss ? wave.boss_delay : null;
-  log(`第 ${wave.wave} 波来袭，敌军将从多入口进入${pathId ? `，你从${pathById[pathId]?.name || "入口"}发出迎战号令` : ""}`);
 }
 
 function buildTower(slot, towerId = state.selectedTowerId) {
@@ -1254,7 +1410,6 @@ function buildTower(slot, towerId = state.selectedTowerId) {
     }
   };
   AudioSystem.build(towerId);
-  log(`${slot.slot_id} 建造 ${towerConfig.name}`);
   hideTowerPopup();
 }
 
@@ -1267,7 +1422,6 @@ function upgradeTower(slot) {
   slot.tower.attack = Math.round(slot.tower.attack * 1.45);
   slot.tower.range += 0.45;
   AudioSystem.upgrade();
-  log(`${slot.slot_id} ${slot.tower.name} 升至 ${slot.tower.level} 级`);
   hideTowerPopup();
 }
 
@@ -1275,7 +1429,6 @@ function sellTower(slot) {
   if (!slot.tower) return;
   const refund = Math.floor(slot.tower.buildCost * 0.8);
   const animation = towerLifecycleAnimations.dismantle;
-  log(`${slot.slot_id} 拆除 ${slot.tower.name}，返还 ${refund} 金`);
   AudioSystem.dismantle();
   state.gold += refund;
   state.towerAnimations.push({
@@ -1291,17 +1444,24 @@ function sellTower(slot) {
   hideTowerPopup();
 }
 
-function dealDamage(enemy, amount, damageType) {
+function dealDamage(enemy, amount, damageType, source = "unknown") {
+  const hpBefore = enemy.currentHp;
   const resistance = damageType === "physical" ? enemy.physical_resistance || 0 : enemy.magic_resistance || 0;
   const finalDamage = Math.max(1, amount * (1 - resistance));
   enemy.currentHp -= finalDamage;
+  if (hpBefore > 0 && enemy.currentHp <= 0) {
+    enemy.killedBy = source;
+  }
+  if (enemy.currentHp > 0 && enemy.currentHp < enemy.maxHp) {
+    enemy.showHealthBar = true;
+  }
   return finalDamage;
 }
 
 function damageHero(amount, sourceName) {
   const hero = state.hero;
   if (hero.isDead || state.gameOver || state.victory) return;
-  hero.hp = Math.max(0, hero.hp - amount);
+  hero.hp = Math.max(0, hero.hp - amount * (level.hero.damage_taken_multiplier || 1));
   if (hero.hp > 0) return;
 
   hero.isDead = true;
@@ -1315,7 +1475,6 @@ function damageHero(amount, sourceName) {
   hero.duelEnemyUid = null;
   state.heroMoveMode = false;
   AudioSystem.heroDeath();
-  log(`${sourceName} 击倒${level.hero.name}，${level.hero.revive_cooldown || 30}s 后复活`);
 }
 
 function heroEngageRange(enemy) {
@@ -1349,14 +1508,12 @@ function refreshHeroDuel() {
     .filter((enemy) => enemy.currentHp > 0 && distance(enemy, hero) <= heroEngageRange(enemy))
     .sort((a, b) => b.progress - a.progress)[0];
   hero.duelEnemyUid = next ? next.uid : null;
-  if (next) log(`${level.hero.name}迎战${next.name}`);
   return next || null;
 }
 
 function killEnemy(enemy) {
   state.gold += enemy.reward_gold || 0;
   if (enemy.uid === state.hero.duelEnemyUid) state.hero.duelEnemyUid = null;
-  if (enemy.isBoss) log(`${enemy.name}被击败`);
 }
 
 function updateSpawning(dt) {
@@ -1373,9 +1530,28 @@ function updateSpawning(dt) {
     if (state.bossSpawnTimer <= 0) {
       state.enemies.push(createEnemy(wave.boss, true));
       state.bossSpawnTimer = null;
-      log(`${lookup.boss.name}登场`);
     }
   }
+}
+
+function triggerBossHeroSkill(enemy) {
+  if (enemy.id !== "boss_liubei" || enemy.bossHeroSkillIndex >= 2) return false;
+  const skillIndex = enemy.bossHeroSkillIndex;
+  const skillSprite = skillIndex === 0 ? heroSkill1Sprite : heroSkill2Sprite;
+  const fallbackSprite = heroAttackSprite;
+  const sprite = skillSprite.ready ? skillSprite : fallbackSprite;
+  const skillDamageMultiplier = skillIndex === 0 ? 1.1 : 1.25;
+  enemy.bossHeroSkillIndex += 1;
+  enemy.action = skillIndex === 0 ? "skill1" : "skill2";
+  enemy.attackDuration = sprite.ready ? sprite.frameCount / sprite.fps : 0.55;
+  enemy.attackTimer = enemy.attackDuration;
+  enemy.attackCooldown = Math.max(enemy.attackDuration, 0.7);
+  enemy.facing = state.hero.x < enemy.x ? -1 : 1;
+  updateEnemyWalkDirection(enemy, state.hero.x - enemy.x, state.hero.y - enemy.y);
+  damageHero((enemy.attack || 25) * skillDamageMultiplier, `${enemy.name}${skillIndex === 0 ? "·龙魂突进" : "·仁德号令"}`);
+  AudioSystem.enemyAttack(enemy.id);
+  if (skillIndex === 1) state.bossSpeedBuffTimer = bossSpeedSkill.duration;
+  return true;
 }
 
 function updateEnemies(dt) {
@@ -1384,9 +1560,10 @@ function updateEnemies(dt) {
   state.enemies.forEach((enemy) => {
     enemy.attackCooldown = Math.max(0, enemy.attackCooldown - dt);
     enemy.attackTimer = Math.max(0, enemy.attackTimer - dt);
+    if (enemy.attackTimer <= 0) enemy.action = null;
     if (enemy.fireDot > 0) {
       enemy.fireDot -= dt;
-      dealDamage(enemy, enemy.fireDps * dt, "magic");
+      dealDamage(enemy, enemy.fireDps * dt, "magic", "tower");
     }
 
     if (enemy.isBoss) {
@@ -1395,12 +1572,10 @@ function updateEnemies(dt) {
       if (enemy.dashCooldown <= 0) {
         enemy.progress += bossDashSkill.distance;
         enemy.dashCooldown = bossDashSkill.cooldown;
-        log(`${enemy.name}使用${bossDashSkill.name}`);
       }
       if (enemy.roarCooldown <= 0) {
         state.bossSpeedBuffTimer = bossSpeedSkill.duration;
         enemy.roarCooldown = bossSpeedSkill.cooldown;
-        log(`${enemy.name}使用${bossSpeedSkill.name}`);
       }
     }
 
@@ -1408,6 +1583,7 @@ function updateEnemies(dt) {
     if (canFightHero) {
       updateEnemyWalkDirection(enemy, state.hero.x - enemy.x, state.hero.y - enemy.y);
       if (enemy.attackCooldown <= 0) {
+        if (triggerBossHeroSkill(enemy)) return;
         damageHero(enemy.attack || 25, enemy.name);
         AudioSystem.enemyAttack(enemy.id);
         enemy.attackCooldown = enemy.attack_interval || 1.4;
@@ -1445,7 +1621,6 @@ function updateEnemies(dt) {
   const leaked = state.enemies.filter((enemy) => enemy.progress >= level.map.path_length);
   leaked.forEach((enemy) => {
     state.hp = Math.max(0, state.hp - enemy.leak_damage);
-    log(`${enemy.name} 突破防线，扣血 ${enemy.leak_damage}`);
   });
   state.enemies = state.enemies.filter((enemy) => enemy.progress < level.map.path_length && enemy.currentHp > 0);
   if (!getHeroDuelEnemy()) state.hero.duelEnemyUid = null;
@@ -1495,10 +1670,11 @@ function updateTowers(dt) {
       .sort((a, b) => b.progress - a.progress)[0];
     if (!target) return;
 
-    dealDamage(target, tower.attack, tower.damage_type);
+    dealDamage(target, tower.attack, tower.damage_type, "tower");
     if (tower.id === "fire_tower") {
       target.fireDot = tower.dot_duration || 3;
       target.fireDps = tower.attack * 0.35;
+      target.fireLevel = tower.level;
     }
     const muzzle = towerMuzzlePoint(slot, tower, target);
     if (tower.id === "arrow_tower") {
@@ -1547,7 +1723,8 @@ function updateTowers(dt) {
         y2: target.y - scaled(target.type === "flying" ? 18 : 12),
         life: Math.max(0.24, 0.46 - tower.level * 0.045),
         duration: Math.max(0.24, 0.46 - tower.level * 0.045),
-        color: "#ff9d2e"
+        color: tower.level >= 3 ? "#ff4a1c" : tower.level === 2 ? "#ff7d22" : "#ff9d2e",
+        targetType: target.type
       });
     } else if (tower.id === "watchtower") {
       state.projectiles.push({
@@ -1589,7 +1766,6 @@ function updateHero(dt) {
       hero.isDead = false;
       hero.action = null;
       hero.deathTimer = 0;
-      log(`${level.hero.name}复活，可再次投入战斗`);
     }
     return;
   }
@@ -1604,7 +1780,7 @@ function updateHero(dt) {
   const duelEnemyBeforeMove = getHeroDuelEnemy();
   const isRecovering = hero.attackTimer <= 0 && !hero.action && !duelEnemyBeforeMove && !hero.moveTarget && hero.hp < hero.maxHp;
   if (isRecovering) {
-    hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * 0.018 * dt);
+    hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * (level.hero.regen_per_second ?? 0.018) * dt);
   }
 
   if (hero.moveTarget) {
@@ -1634,7 +1810,7 @@ function updateHero(dt) {
         .filter((enemy) => distance(hero, enemy) <= scaled(95))
         .sort((a, b) => b.progress - a.progress)[0];
     if (target) {
-      dealDamage(target, level.hero.attack, "physical");
+      dealDamage(target, level.hero.attack, "physical", "hero");
       hero.cooldown = level.hero.attack_interval;
       const sprites = defenderSpriteSet();
       hero.attackDuration = sprites.attack.frameCount / sprites.attack.fps;
@@ -1660,7 +1836,6 @@ function finishWaveIfReady() {
 
   const wave = level.waves[state.waveIndex];
   state.gold += wave.reward;
-  log(`第 ${wave.wave} 波结束，奖励 ${wave.reward} 金`);
   state.waveActive = false;
   state.waveIndex += 1;
   if (state.waveIndex >= level.waves.length) showResult(true);
@@ -1685,14 +1860,208 @@ function starsForHp(hp) {
   return 0;
 }
 
+function formatTime(totalSeconds) {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function calculateResultScore(stars, hp, completionTime, victory) {
+  const maxHp = level.base.max_hp;
+  const hpLost = Math.max(0, maxHp - hp);
+  const starScore = victory ? stars * 3000 : 0;
+  const hpScore = victory ? hp * 260 : 0;
+  const timeScore = victory ? Math.max(0, 3600 - Math.floor(completionTime * 12)) : 0;
+  const score = starScore + hpScore + timeScore;
+
+  return {
+    score,
+    stars,
+    victory,
+    hp,
+    hpLost,
+    completionTime,
+    starScore,
+    hpScore,
+    timeScore
+  };
+}
+
+function loadRankingRecords() {
+  try {
+    const records = JSON.parse(localStorage.getItem(RANKING_STORAGE_KEY) || "[]");
+    return Array.isArray(records) ? records : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRankingRecord(result, playerName = "") {
+  const records = loadRankingRecords();
+  const trimmedName = playerName.trim();
+  const nextRecord = {
+    ...result,
+    levelId: level.level_id,
+    levelName: level.level_name,
+    player: trimmedName || `玩家 ${records.length + 1}`,
+    completedAt: new Date().toISOString()
+  };
+  const nextRecords = [...records, nextRecord]
+    .sort(
+      (a, b) =>
+        Number(b.victory !== false) - Number(a.victory !== false) ||
+        b.score - a.score ||
+        a.completionTime - b.completionTime ||
+        b.hp - a.hp
+    )
+    .slice(0, MAX_RANKING_RECORDS);
+
+  try {
+    localStorage.setItem(RANKING_STORAGE_KEY, JSON.stringify(nextRecords));
+  } catch {
+    return {
+      record: nextRecord,
+      rank: 1,
+      records: [nextRecord]
+    };
+  }
+
+  return {
+    record: nextRecord,
+    rank: nextRecords.findIndex((record) => record.completedAt === nextRecord.completedAt) + 1,
+    records: nextRecords
+  };
+}
+
+function renderRanking(records = loadRankingRecords()) {
+  if (!ui.rankingList) return;
+  const visibleRecords = records.slice(0, MAX_RANKING_RECORDS);
+  if (visibleRecords.length === 0) {
+    ui.rankingList.innerHTML = `<p class="ranking-empty">暂无通关记录</p>`;
+    return;
+  }
+
+  ui.rankingList.innerHTML = visibleRecords
+    .map((record, index) => {
+      const date = record.completedAt ? new Date(record.completedAt) : null;
+      const dateText = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("zh-CN") : "历史记录";
+      return `
+        <div class="ranking-row">
+          <strong>${index + 1}</strong>
+          <div>
+            <b>${record.player || "玩家"}</b>
+            <span>${record.victory !== false ? "通关" : "失败"} · ${record.stars} 星 · ${formatTime(record.completionTime)} · 剩余城防 ${record.hp}/${level.base.max_hp}</span>
+          </div>
+          <em>${record.score}</em>
+          <small>${dateText}</small>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function resultStarsText(stars) {
+  return "★".repeat(stars) + "☆".repeat(Math.max(0, 3 - stars));
+}
+
+function renderResultRanking(records, currentRecord) {
+  if (!ui.resultRanking) return;
+  const topRows = records.slice(0, 5);
+  const currentInTopRows = topRows.some((record) => record.completedAt === currentRecord.completedAt);
+  const rows = currentInTopRows ? topRows : [...records.slice(0, 4), currentRecord];
+  if (rows.length === 0) {
+    ui.resultRanking.innerHTML = "";
+    return;
+  }
+
+  ui.resultRanking.innerHTML = `
+    <h3>Ranking</h3>
+    <div class="result-ranking-list">
+      ${rows
+        .map((record, index) => {
+          const isCurrent = record.completedAt === currentRecord.completedAt;
+          const rank = records.findIndex((candidate) => candidate.completedAt === record.completedAt) + 1 || index + 1;
+          return `
+            <div class="result-ranking-row${isCurrent ? " current" : ""}">
+              <strong>${rank}</strong>
+              <span>${record.victory !== false ? "通关" : "失败"} · ${record.stars} 星 · ${formatTime(record.completionTime)}</span>
+              <em>${record.score}</em>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function openRanking(records) {
+  renderRanking(records);
+  ui.rankingModal.classList.remove("hidden");
+}
+
+let pendingResult = null;
+
+function renderResultNameEntry() {
+  ui.resultRanking.classList.remove("hidden");
+  ui.resultRanking.classList.add("is-name-entry");
+  ui.resultRanking.innerHTML = `
+    <div class="result-name-form">
+      <label for="resultPlayerName">输入姓名</label>
+      <input id="resultPlayerName" type="text" maxlength="12" autocomplete="off" placeholder="玩家姓名" />
+    </div>
+  `;
+  window.setTimeout(() => ui.resultRanking.querySelector("#resultPlayerName")?.focus(), 0);
+}
+
+function setResultActions(mode) {
+  document.querySelector(".result-actions")?.classList.toggle("is-success", mode === "success");
+  ui.resultNext.classList.toggle("hidden", mode !== "success");
+  ui.resultRestart.classList.toggle("hidden", mode !== "failure");
+  ui.resultBack.classList.toggle("hidden", mode !== "failure");
+}
+
+function submitResultToRanking() {
+  if (!pendingResult) return;
+  const playerName = ui.resultRanking.querySelector("#resultPlayerName")?.value || "";
+  const ranking = saveRankingRecord(pendingResult, playerName);
+  pendingResult = null;
+  ui.resultModal.classList.add("hidden");
+  openRanking(ranking.records);
+}
+
 function showResult(victory) {
+  if (state.gameOver || state.victory) return;
   state.gameOver = !victory;
   state.victory = victory;
+  ui.resultModal.classList.toggle("is-success", victory);
+  ui.resultModal.classList.toggle("is-failure", !victory);
   const stars = victory ? starsForHp(state.hp) : 0;
-  ui.resultTitle.textContent = victory ? `${stars} 星通关` : "防线失守";
+  ui.resultModal.classList.toggle("stars-1", victory && stars === 1);
+  ui.resultModal.classList.toggle("stars-2", victory && stars === 2);
+  ui.resultModal.classList.toggle("stars-3", victory && stars === 3);
+  const result = calculateResultScore(stars, Math.max(0, state.hp), state.time, victory);
+  const resultTimeText = formatTime(state.time).replace(":", "");
+  pendingResult = victory ? result : null;
+  ui.resultStars.textContent = resultStarsText(stars);
+  ui.resultTitle.textContent = victory ? "通关完成" : "防线失守";
   ui.resultBody.textContent = victory
-    ? `剩余城防 ${state.hp}/${level.base.max_hp}，获得 ${stars} 星评价。`
-    : `城防归零。调整建塔位置和技能时机后再战。`;
+    ? `剩余城防 ${Math.max(0, state.hp)}/${level.base.max_hp} · ${formatTime(state.time)}`
+    : `城防归零 · ${formatTime(state.time)}`;
+  ui.resultScore.innerHTML = `
+    <strong>${resultTimeText}</strong>
+    <span>本局用时</span>
+    <small>${stars} 星 · 耗血 ${result.hpLost}</small>
+  `;
+  if (victory) {
+    renderResultNameEntry();
+    setResultActions("success");
+  } else {
+    ui.resultRanking.classList.add("hidden");
+    ui.resultRanking.classList.remove("is-name-entry");
+    ui.resultRanking.innerHTML = "";
+    setResultActions("failure");
+  }
   ui.resultModal.classList.remove("hidden");
   AudioSystem.result(victory);
 }
@@ -1702,17 +2071,9 @@ function damageEnemiesAroundHero(skill, damageType) {
   let hitCount = 0;
   state.enemies.forEach((enemy) => {
     if (distance(state.hero, enemy) <= radius) {
-      dealDamage(enemy, skill.damage, damageType);
+      dealDamage(enemy, skill.damage, damageType, "hero");
       hitCount += 1;
     }
-  });
-  state.projectiles.push({
-    x1: state.hero.x - radius,
-    y1: state.hero.y,
-    x2: state.hero.x + radius,
-    y2: state.hero.y,
-    life: 0.18,
-    color: damageType === "magic" ? "#78b9e8" : "#ffe84f"
   });
   return hitCount;
 }
@@ -1727,7 +2088,6 @@ function useBuffSkill() {
   state.hero.attackTimer = state.hero.attackDuration;
   state.hero.action = "skill1";
   AudioSystem.heroAttack(true);
-  log(`${level.hero.name}释放${skill.name}，命中 ${hitCount} 个敌军`);
 }
 
 function useLineSkill() {
@@ -1740,14 +2100,54 @@ function useLineSkill() {
   state.hero.attackTimer = state.hero.attackDuration;
   state.hero.action = "skill2";
   AudioSystem.heroAttack(true);
-  log(`${level.hero.name}释放${skill.name}，造成魔法伤害，命中 ${hitCount} 个敌军`);
 }
 
 function updateProjectiles(dt) {
   state.projectiles.forEach((projectile) => {
     projectile.life -= dt;
+    if (projectile.type === "fireball" && projectile.life <= 0 && !projectile.hasImpacted) {
+      projectile.hasImpacted = true;
+      state.fireImpacts.push(createFireImpact(projectile));
+    }
   });
   state.projectiles = state.projectiles.filter((projectile) => projectile.life > 0);
+}
+
+function createFireImpact(projectile) {
+  const level = projectile.level || 1;
+  const sparkCount = 5 + level * 4;
+  const smokeCount = 3 + level * 2;
+  return {
+    x: projectile.x2,
+    y: projectile.y2 + scaled(projectile.targetType === "flying" ? 12 : 18),
+    level,
+    life: 0.5 + level * 0.14,
+    duration: 0.5 + level * 0.14,
+    radius: scaled(14 + level * 7),
+    sparks: Array.from({ length: sparkCount }, (_, index) => {
+      const angle = (Math.PI * 2 * index) / sparkCount + Math.random() * 0.55;
+      const speed = scaled(16 + Math.random() * (18 + level * 12));
+      return {
+        angle,
+        speed,
+        size: scaled(1.2 + Math.random() * (1.2 + level * 0.45)),
+        lifeOffset: Math.random() * 0.16
+      };
+    }),
+    smoke: Array.from({ length: smokeCount }, () => ({
+      angle: -Math.PI / 2 + (Math.random() - 0.5) * 1.35,
+      speed: scaled(8 + Math.random() * (10 + level * 4)),
+      size: scaled(7 + Math.random() * (7 + level * 3)),
+      drift: (Math.random() - 0.5) * scaled(10)
+    }))
+  };
+}
+
+function updateFireImpacts(dt) {
+  state.fireImpacts.forEach((impact) => {
+    impact.life -= dt;
+  });
+  state.fireImpacts = state.fireImpacts.filter((impact) => impact.life > 0);
 }
 
 function update(dt) {
@@ -1763,6 +2163,7 @@ function update(dt) {
   updateHero(scaledDt);
   cleanupKilled();
   updateProjectiles(scaledDt);
+  updateFireImpacts(scaledDt);
   finishWaveIfReady();
 }
 
@@ -1915,15 +2316,15 @@ function getAnimatedEnemySprite(enemy) {
           walkFront: knifeSoldierWalkFrontSprite,
           walkBack: knifeSoldierWalkBackSprite,
           attack: knifeSoldierAttackSprite,
-          walkSize: 82,
-          attackSize: 90,
-          yOffset: 28,
-          attackYOffset: 32,
-          healthY: -58,
-          labelY: 28,
-          shadowX: 3,
-          shadowY: 14,
-          shadowW: 23,
+          walkSize: 98,
+          attackSize: 108,
+          yOffset: 34,
+          attackYOffset: 38,
+          healthY: -70,
+          labelY: 34,
+          shadowX: 2,
+          shadowY: 11,
+          shadowW: 25,
           shadowH: 8,
           attackFacesRight: false
         }
@@ -1958,7 +2359,7 @@ function getAnimatedEnemySprite(enemy) {
               walkFront: warlockWalkFrontSprite,
               walkBack: warlockWalkBackSprite,
               attack: warlockAttackSprite,
-              walkSize: 86,
+              walkSize: 96,
               attackSize: 96,
               yOffset: 30,
               attackYOffset: 34,
@@ -2007,16 +2408,21 @@ function getAnimatedEnemySprite(enemy) {
                   attackFacesRight: false
                 }
               : enemy.id === "boss_liubei"
-                ? {
-                    walk: heroWalkSprite,
-                    walkFront: heroWalkSprite,
-                    walkBack: heroWalkSprite,
-                    attack: heroAttackSprite,
-                    walkSize: 118,
-                    attackSize: 128,
-                    yOffset: 38,
-                    attackYOffset: 42,
-                    healthY: -74,
+                  ? {
+                      walk: heroWalkSprite,
+                      walkFront: heroWalkSprite,
+                      walkBack: heroWalkSprite,
+                      attack: heroAttackSprite,
+                      skill1: heroSkill1Sprite,
+                      skill2: heroSkill2Sprite,
+                      walkSize: 118,
+                      attackSize: 128,
+                      skill1Size: 136,
+                      skill2Size: 136,
+                      yOffset: 38,
+                      attackYOffset: 42,
+                      skillYOffset: 44,
+                      healthY: -74,
                     labelY: 38,
                     shadowX: 2,
                     shadowY: 18,
@@ -2027,9 +2433,15 @@ function getAnimatedEnemySprite(enemy) {
         : null;
   if (!spriteSet) return null;
 
-  const isAttacking = enemy.attackTimer > 0 && spriteSet.attack.ready;
+  const isSkill1 = enemy.action === "skill1" && enemy.attackTimer > 0 && spriteSet.skill1?.ready;
+  const isSkill2 = enemy.action === "skill2" && enemy.attackTimer > 0 && spriteSet.skill2?.ready;
+  const isAttacking = enemy.attackTimer > 0 && (isSkill1 || isSkill2 || spriteSet.attack.ready);
   const sprite = isAttacking
-    ? spriteSet.attack
+    ? isSkill1
+      ? spriteSet.skill1
+      : isSkill2
+        ? spriteSet.skill2
+        : spriteSet.attack
     : enemy.walkDirection === "front"
       ? spriteSet.walkFront
       : enemy.walkDirection === "back"
@@ -2037,7 +2449,7 @@ function getAnimatedEnemySprite(enemy) {
         : spriteSet.walk;
   if (!sprite.ready) return null;
 
-  return { ...spriteSet, sprite, isAttacking };
+  return { ...spriteSet, sprite, isAttacking, isSkill1, isSkill2 };
 }
 
 function drawEnemy(enemy) {
@@ -2045,7 +2457,7 @@ function drawEnemy(enemy) {
     ctx.translate(enemy.x, enemy.y);
     const animatedEnemySprite = getAnimatedEnemySprite(enemy);
     if (animatedEnemySprite) {
-      const { sprite, isAttacking } = animatedEnemySprite;
+      const { sprite, isAttacking, isSkill1, isSkill2 } = animatedEnemySprite;
       const shadowKey = isAttacking ? "attack" : enemy.walkDirection;
       const shadow = animatedEnemySprite.shadows?.[shadowKey] || {
         x: animatedEnemySprite.shadowX,
@@ -2053,18 +2465,7 @@ function drawEnemy(enemy) {
         w: animatedEnemySprite.shadowW,
         h: animatedEnemySprite.shadowH
       };
-      ctx.fillStyle = "rgb(0 0 0 / 0.28)";
-      ctx.beginPath();
-      ctx.ellipse(
-        scaled(shadow.x),
-        scaled(shadow.y),
-        scaled(shadow.w),
-        scaled(shadow.h),
-        -0.15,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
+      drawGroundShadow(shadow.x, shadow.y, shadow.w, shadow.h, 0.26);
       const frameIndex = isAttacking
         ? Math.min(
             sprite.frameCount - 1,
@@ -2077,19 +2478,24 @@ function drawEnemy(enemy) {
       drawHeroSprite(
         sprite,
         frameIndex,
-        scaled(isAttacking ? animatedEnemySprite.attackSize : animatedEnemySprite.walkSize),
-        scaled(isAttacking ? animatedEnemySprite.attackSize : animatedEnemySprite.walkSize),
-        scaled(isAttacking ? animatedEnemySprite.attackYOffset : animatedEnemySprite.yOffset),
+        scaled(isSkill1 ? animatedEnemySprite.skill1Size : isSkill2 ? animatedEnemySprite.skill2Size : isAttacking ? animatedEnemySprite.attackSize : animatedEnemySprite.walkSize),
+        scaled(isSkill1 ? animatedEnemySprite.skill1Size : isSkill2 ? animatedEnemySprite.skill2Size : isAttacking ? animatedEnemySprite.attackSize : animatedEnemySprite.walkSize),
+        scaled(isSkill1 || isSkill2 ? animatedEnemySprite.skillYOffset : isAttacking ? animatedEnemySprite.attackYOffset : animatedEnemySprite.yOffset),
         shouldFlip
       );
-      ctx.fillStyle = "#11140f";
-      ctx.fillRect(scaled(-22), scaled(animatedEnemySprite.healthY), scaled(44), scaled(5));
-      ctx.fillStyle = enemy.currentHp / enemy.maxHp > 0.45 ? "#78d06f" : "#e15d50";
-      ctx.fillRect(scaled(-22), scaled(animatedEnemySprite.healthY), scaled(44) * Math.max(0, enemy.currentHp / enemy.maxHp), scaled(5));
-      ctx.fillStyle = "#fff8dc";
-      ctx.font = `700 ${scaled(11)}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.fillText(enemy.name.slice(2, 4), 0, scaled(animatedEnemySprite.labelY));
+      drawBurningEnemyOverlay(enemy, animatedEnemySprite);
+      if (enemy.showHealthBar) {
+        const healthBarWidth = scaled(31);
+        const healthBarHeight = scaled(5);
+        const healthBarX = -healthBarWidth / 2;
+        const healthBarY = scaled(animatedEnemySprite.healthY);
+        ctx.fillStyle = "rgb(0 0 0 / 0.82)";
+        ctx.fillRect(healthBarX - scaled(1.5), healthBarY - scaled(1.5), healthBarWidth + scaled(3), healthBarHeight + scaled(3));
+        ctx.fillStyle = "#11140f";
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+        ctx.fillStyle = enemy.currentHp / enemy.maxHp > 0.45 ? "#78d06f" : "#e15d50";
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth * Math.max(0, enemy.currentHp / enemy.maxHp), healthBarHeight);
+      }
       ctx.restore();
       return;
     }
@@ -2101,15 +2507,49 @@ function drawEnemy(enemy) {
     ctx.strokeStyle = enemy.isBoss ? "#ffe59b" : "#1a1d17";
     ctx.lineWidth = scaled(enemy.isBoss ? 4 : 2);
     ctx.stroke();
-    ctx.fillStyle = "#11140f";
-    ctx.fillRect(scaled(-22), -radius - scaled(13), scaled(44), scaled(5));
-    ctx.fillStyle = enemy.currentHp / enemy.maxHp > 0.45 ? "#78d06f" : "#e15d50";
-    ctx.fillRect(scaled(-22), -radius - scaled(13), scaled(44) * Math.max(0, enemy.currentHp / enemy.maxHp), scaled(5));
-    ctx.fillStyle = "#fff8dc";
-    ctx.font = `700 ${scaled(11)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillText(enemy.isBoss ? enemy.name : enemy.name.slice(2, 4), 0, radius + scaled(15));
+    drawBurningEnemyOverlay(enemy, { walkSize: enemy.isBoss ? 58 : enemy.type === "flying" ? 38 : 44, yOffset: enemy.type === "flying" ? 18 : 22 });
+    if (enemy.showHealthBar) {
+      ctx.fillStyle = "#11140f";
+      ctx.fillRect(scaled(-22), -radius - scaled(13), scaled(44), scaled(5));
+      ctx.fillStyle = enemy.currentHp / enemy.maxHp > 0.45 ? "#78d06f" : "#e15d50";
+      ctx.fillRect(scaled(-22), -radius - scaled(13), scaled(44) * Math.max(0, enemy.currentHp / enemy.maxHp), scaled(5));
+    }
     ctx.restore();
+}
+
+function drawBurningEnemyOverlay(enemy, spriteInfo = {}) {
+  if (!enemy.fireDot || enemy.fireDot <= 0) return;
+  const level = enemy.fireLevel || 1;
+  const time = state.time * (6 + level * 1.2) + enemy.uid;
+  const baseWidth = scaled((spriteInfo.walkSize || 52) * (0.12 + level * 0.012));
+  const baseHeight = scaled((spriteInfo.walkSize || 52) * (0.12 + level * 0.026));
+  const baseY = scaled((spriteInfo.yOffset || 34) - (spriteInfo.walkSize || 52) * 0.46);
+  const flameCount = level + 1;
+
+  ctx.save();
+  for (let index = 0; index < flameCount; index += 1) {
+    const phase = time + index * 1.7;
+    const x = Math.sin(phase * 0.9) * baseWidth * (0.72 + index * 0.16);
+    const y = baseY + Math.cos(phase * 1.15) * scaled(4) - index * scaled(5);
+    const height = baseHeight * (0.75 + Math.sin(phase) * 0.16 + index * 0.12);
+    const width = baseWidth * (0.9 + Math.cos(phase) * 0.12);
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, height);
+    gradient.addColorStop(0, "rgb(255 218 120 / 0.58)");
+    gradient.addColorStop(0.46, level >= 3 ? "rgb(209 63 21 / 0.42)" : "rgb(218 91 26 / 0.35)");
+    gradient.addColorStop(1, "rgb(255 28 8 / 0)");
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(x, y, width, height, -0.2 + Math.sin(phase) * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (level >= 3) {
+    ctx.globalAlpha = 0.22 + Math.sin(time) * 0.04;
+    ctx.fillStyle = "rgb(34 28 24 / 0.45)";
+    ctx.beginPath();
+    ctx.ellipse(Math.sin(time) * baseWidth * 0.7, baseY - scaled(12), baseWidth * 1.5, baseHeight * 0.8, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawEnemies() {
@@ -2117,46 +2557,96 @@ function drawEnemies() {
   enemiesByDepth.forEach(drawEnemy);
 }
 
-function drawHeroSprite(sprite, frameIndex, width, height, yOffset, flip = false) {
-  const frameX = (frameIndex % sprite.columns) * sprite.frameWidth;
-  const frameY = Math.floor(frameIndex / sprite.columns) * sprite.frameHeight;
-  ctx.save();
-  if (flip) ctx.scale(-1, 1);
+function tintedSpriteCanvas(sprite, color) {
+  if (!sprite.tintCache) sprite.tintCache = new Map();
+  if (sprite.tintCache.has(color)) return sprite.tintCache.get(color);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = sprite.canvas.width;
+  canvas.height = sprite.canvas.height;
+  const tintCtx = canvas.getContext("2d");
+  tintCtx.drawImage(sprite.canvas, 0, 0);
+  tintCtx.globalCompositeOperation = "source-in";
+  tintCtx.fillStyle = color;
+  tintCtx.fillRect(0, 0, canvas.width, canvas.height);
+  sprite.tintCache.set(color, canvas);
+  return canvas;
+}
+
+function drawSpriteFrame(sourceCanvas, sprite, frameX, frameY, width, height, yOffset, offsetX = 0, offsetY = 0) {
   ctx.drawImage(
-    sprite.canvas,
+    sourceCanvas,
     frameX,
     frameY,
     sprite.frameWidth,
     sprite.frameHeight,
-    -width / 2,
-    -height + yOffset,
+    -width / 2 + offsetX,
+    -height + yOffset + offsetY,
     width,
     height
   );
+}
+
+function drawHeroSprite(sprite, frameIndex, width, height, yOffset, flip = false, outline = null) {
+  const frameX = (frameIndex % sprite.columns) * sprite.frameWidth;
+  const frameY = Math.floor(frameIndex / sprite.columns) * sprite.frameHeight;
+  ctx.save();
+  if (flip) ctx.scale(-1, 1);
+  if (outline) {
+    const outlineCanvas = tintedSpriteCanvas(sprite, outline.color);
+    const radius = outline.width || scaled(3);
+    ctx.save();
+    ctx.globalAlpha = outline.alpha ?? 0.72;
+    for (let index = 0; index < 12; index += 1) {
+      const angle = (Math.PI * 2 * index) / 12;
+      drawSpriteFrame(outlineCanvas, sprite, frameX, frameY, width, height, yOffset, Math.cos(angle) * radius, Math.sin(angle) * radius);
+    }
+    ctx.restore();
+  }
+  drawSpriteFrame(sprite.canvas, sprite, frameX, frameY, width, height, yOffset);
   ctx.restore();
+}
+
+function drawGroundShadow(x, y, width, height, alpha = 0.28, angle = -0.15) {
+  ctx.save();
+  ctx.translate(scaled(x), scaled(y));
+  ctx.rotate(angle);
+  ctx.scale(scaled(width), scaled(height));
+  const shadow = ctx.createRadialGradient(-0.18, -0.16, 0.08, 0, 0, 1);
+  shadow.addColorStop(0, `rgb(0 0 0 / ${alpha})`);
+  shadow.addColorStop(0.58, `rgb(0 0 0 / ${alpha * 0.42})`);
+  shadow.addColorStop(1, "rgb(0 0 0 / 0)");
+  ctx.fillStyle = shadow;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 1, 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(scaled(x - width * 0.04), scaled(y + height * 0.12));
+  ctx.rotate(angle * 0.75);
+  ctx.scale(scaled(width * 0.56), scaled(height * 0.34));
+  ctx.fillStyle = `rgb(0 0 0 / ${alpha * 0.32})`;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 1, 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function shouldFlipHeroSprite(sprites) {
+  return sprites.sourceFacesRight ? state.hero.facing < 0 : state.hero.facing > 0;
 }
 
 function drawHero() {
   const sprites = defenderSpriteSet();
   ctx.save();
   ctx.translate(state.hero.x, state.hero.y);
-  ctx.fillStyle = "rgb(0 0 0 / 0.34)";
-  ctx.beginPath();
-  ctx.ellipse(scaled(2), scaled(18), scaled(28), scaled(11), -0.18, 0, Math.PI * 2);
-  ctx.fill();
-
-  if (state.heroMoveMode) {
-    ctx.strokeStyle = "#ffe84f";
-    ctx.lineWidth = scaled(4);
-    ctx.beginPath();
-    ctx.ellipse(0, scaled(18), scaled(36), scaled(15), -0.18, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  drawGroundShadow(2, 18, 31, 12, 0.3, -0.18);
 
   if (state.hero.isDead) {
     if (sprites.death.ready) {
       const frameIndex = Math.min(sprites.death.frameCount - 1, Math.floor(state.hero.deathTimer * sprites.death.fps));
-      drawHeroSprite(sprites.death, frameIndex, scaled(sprites.deathSize), scaled(sprites.deathSize), scaled(sprites.yOffset), state.hero.facing > 0);
+      drawHeroSprite(sprites.death, frameIndex, scaled(sprites.deathSize), scaled(sprites.deathSize), scaled(sprites.yOffset), shouldFlipHeroSprite(sprites));
     }
     ctx.restore();
     return;
@@ -2166,31 +2656,33 @@ function drawHero() {
   const shouldPlaySkill1 = state.hero.action === "skill1" && state.hero.attackTimer > 0 && sprites.skill1.ready;
   const shouldPlaySkill2 = state.hero.action === "skill2" && state.hero.attackTimer > 0 && sprites.skill2.ready;
   const shouldPlayAttack = state.hero.attackTimer > 0 && sprites.attack.ready;
-  const shouldPlayIdle = !state.heroMoveMode && !state.hero.moveTarget && state.hero.attackTimer <= 0 && sprites.idle.ready;
+  const shouldPlayIdle = !state.hero.moveTarget && state.hero.attackTimer <= 0 && sprites.idle.ready;
+  const shouldFlip = shouldFlipHeroSprite(sprites);
+  const selectedOutline = state.heroMoveMode
+    ? {
+        color: "#ffe28a",
+        width: scaled(1.6 + Math.sin(state.time * 5) * 0.225),
+        alpha: 0.62 + Math.sin(state.time * 5) * 0.08
+      }
+    : null;
   if (shouldPlaySkill1) {
     const progress = 1 - state.hero.attackTimer / Math.max(0.001, state.hero.attackDuration || 1);
     const frameIndex = Math.min(sprites.skill1.frameCount - 1, Math.floor(progress * sprites.skill1.frameCount));
-    drawHeroSprite(sprites.skill1, frameIndex, scaled(sprites.skill1Size), scaled(sprites.skill1Size), scaled(sprites.skillYOffset), state.hero.facing > 0);
+    drawHeroSprite(sprites.skill1, frameIndex, scaled(sprites.skill1Size), scaled(sprites.skill1Size), scaled(sprites.skillYOffset), shouldFlip, selectedOutline);
   } else if (shouldPlaySkill2) {
     const progress = 1 - state.hero.attackTimer / Math.max(0.001, state.hero.attackDuration || 1);
     const frameIndex = Math.min(sprites.skill2.frameCount - 1, Math.floor(progress * sprites.skill2.frameCount));
-    drawHeroSprite(sprites.skill2, frameIndex, scaled(sprites.skill2Size), scaled(sprites.skill2Size), scaled(sprites.skillYOffset), state.hero.facing > 0);
+    drawHeroSprite(sprites.skill2, frameIndex, scaled(sprites.skill2Size), scaled(sprites.skill2Size), scaled(sprites.skillYOffset), shouldFlip, selectedOutline);
   } else if (shouldPlayAttack) {
     const progress = 1 - state.hero.attackTimer / Math.max(0.001, state.hero.attackDuration || 1);
     const frameIndex = Math.min(sprites.attack.frameCount - 1, Math.floor(progress * sprites.attack.frameCount));
-    drawHeroSprite(sprites.attack, frameIndex, scaled(sprites.attackSize), scaled(sprites.attackSize), scaled(sprites.yOffset), state.hero.facing > 0);
+    drawHeroSprite(sprites.attack, frameIndex, scaled(sprites.attackSize), scaled(sprites.attackSize), scaled(sprites.yOffset), shouldFlip, selectedOutline);
   } else if (shouldPlayWalk) {
     const frameIndex = Math.floor(state.time * sprites.walk.fps) % sprites.walk.frameCount;
-    drawHeroSprite(sprites.walk, frameIndex, scaled(sprites.walkSize), scaled(sprites.walkSize), scaled(sprites.yOffset), state.hero.facing > 0);
+    drawHeroSprite(sprites.walk, frameIndex, scaled(sprites.walkSize), scaled(sprites.walkSize), scaled(sprites.yOffset), shouldFlip, selectedOutline);
   } else if (shouldPlayIdle) {
     const frameIndex = Math.floor(state.time * sprites.idle.fps) % sprites.idle.frameCount;
-    drawHeroSprite(sprites.idle, frameIndex, scaled(sprites.idleSize), scaled(sprites.idleSize), scaled(sprites.idleYOffset));
-  } else if (heroImage.complete && heroImage.naturalWidth > 0) {
-    const width = scaled(82);
-    const height = scaled(82);
-    ctx.save();
-    ctx.drawImage(heroImage, -width / 2, -height + scaled(24), width, height);
-    ctx.restore();
+    drawHeroSprite(sprites.idle, frameIndex, scaled(sprites.idleSize), scaled(sprites.idleSize), scaled(sprites.idleYOffset), false, selectedOutline);
   } else {
     ctx.fillStyle = "#5ea3db";
     ctx.beginPath();
@@ -2199,18 +2691,7 @@ function drawHero() {
     ctx.strokeStyle = "#f4f0e7";
     ctx.lineWidth = scaled(3);
     ctx.stroke();
-    ctx.fillStyle = "#10140f";
-    ctx.font = `700 ${scaled(13)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("刘", 0, 1);
   }
-
-  ctx.fillStyle = "#fff7df";
-  ctx.font = `700 ${scaled(11)}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(state.heroMoveMode ? "放置" : "英雄", 0, scaled(33));
   ctx.restore();
 }
 
@@ -2363,45 +2844,111 @@ function drawMagicProjectile(projectile) {
 }
 
 function drawFireballProjectile(projectile) {
-      const level = projectile.level || 1;
-      const progress = 1 - projectile.life / projectile.duration;
-      const x = projectile.x1 + (projectile.x2 - projectile.x1) * progress;
-      const y = projectile.y1 + (projectile.y2 - projectile.y1) * progress - Math.sin(progress * Math.PI) * scaled(22 + level * 5);
-      const radius = scaled(6 + level * 2);
-      const trailProgress = Math.max(0, progress - (0.1 + level * 0.025));
-      const trailX = projectile.x1 + (projectile.x2 - projectile.x1) * trailProgress;
-      const trailY = projectile.y1 + (projectile.y2 - projectile.y1) * trailProgress - Math.sin(trailProgress * Math.PI) * scaled(22 + level * 5);
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * (2.8 + level * 0.35));
+  const level = projectile.level || 1;
+  const progress = 1 - projectile.life / projectile.duration;
+  const arcHeight = scaled(14 + level * 4);
+  const x = projectile.x1 + (projectile.x2 - projectile.x1) * progress;
+  const y = projectile.y1 + (projectile.y2 - projectile.y1) * progress - Math.sin(progress * Math.PI) * arcHeight;
+  const radius = scaled(5 + level * 1.7);
+  const trailProgress = Math.max(0, progress - (0.1 + level * 0.025));
+  const trailX = projectile.x1 + (projectile.x2 - projectile.x1) * trailProgress;
+  const trailY = projectile.y1 + (projectile.y2 - projectile.y1) * trailProgress - Math.sin(trailProgress * Math.PI) * arcHeight;
+  const angle = Math.atan2(y - trailY, x - trailX);
+  const flameGradient = ctx.createRadialGradient(x - radius * 0.25, y - radius * 0.35, 0, x, y, radius * 1.7);
 
-      glow.addColorStop(0, "rgb(255 246 167 / 0.98)");
-      glow.addColorStop(0.35, level >= 3 ? "rgb(255 103 29 / 0.88)" : "rgb(255 141 39 / 0.78)");
-      glow.addColorStop(1, "rgb(255 42 18 / 0)");
-      ctx.save();
-      ctx.strokeStyle = level >= 3 ? "rgb(255 67 24 / 0.62)" : "rgb(255 117 35 / 0.45)";
-      ctx.lineWidth = scaled(4 + level * 1.5);
+  flameGradient.addColorStop(0, "rgb(255 230 132 / 0.95)");
+  flameGradient.addColorStop(0.42, level >= 3 ? "rgb(219 74 22 / 0.88)" : "rgb(230 101 26 / 0.82)");
+  flameGradient.addColorStop(1, "rgb(73 28 18 / 0.36)");
+
+  ctx.save();
+  ctx.strokeStyle = level >= 3 ? "rgb(126 48 24 / 0.5)" : "rgb(135 61 28 / 0.38)";
+  ctx.lineWidth = scaled(4 + level);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(trailX, trailY);
+  ctx.quadraticCurveTo((trailX + x) / 2, (trailY + y) / 2 - scaled(6 + level * 2), x, y);
+  ctx.stroke();
+
+  if (level >= 2) {
+    ctx.strokeStyle = level >= 3 ? "rgb(239 116 35 / 0.46)" : "rgb(229 124 40 / 0.34)";
+    ctx.lineWidth = scaled(1.4 + level * 0.35);
+    for (let index = 0; index < level; index += 1) {
+      const offset = scaled((index - (level - 1) / 2) * 4);
       ctx.beginPath();
-      ctx.moveTo(trailX, trailY);
+      ctx.moveTo(trailX - Math.sin(angle) * offset, trailY + Math.cos(angle) * offset);
       ctx.lineTo(x, y);
       ctx.stroke();
-      if (level >= 2) {
-        ctx.strokeStyle = "rgb(255 218 76 / 0.58)";
-        ctx.lineWidth = scaled(1.5 + level * 0.5);
-        ctx.beginPath();
-        ctx.moveTo(trailX, trailY - scaled(4));
-        ctx.lineTo(x, y);
-        ctx.moveTo(trailX, trailY + scaled(4));
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-      ctx.fillStyle = glow;
+    }
+  }
+
+  if (level >= 3) {
+    ctx.fillStyle = "rgb(42 34 28 / 0.34)";
+    ctx.beginPath();
+    ctx.ellipse(trailX, trailY - scaled(4), radius * 1.4, radius * 0.72, angle, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = flameGradient;
+  ctx.beginPath();
+  ctx.ellipse(x, y, radius * 1.25, radius * 0.92, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = level >= 3 ? "rgb(255 196 87 / 0.78)" : "rgb(255 180 74 / 0.68)";
+  ctx.beginPath();
+  ctx.ellipse(x - Math.cos(angle) * radius * 0.24, y - Math.sin(angle) * radius * 0.24, radius * 0.42, radius * 0.32, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawFireImpacts() {
+  state.fireImpacts.forEach((impact) => {
+    const level = impact.level || 1;
+    const progress = 1 - impact.life / impact.duration;
+    const fade = Math.max(0, impact.life / impact.duration);
+    const radius = impact.radius * (0.65 + progress * (0.75 + level * 0.08));
+    const scorchRadius = radius * (1.05 + level * 0.12);
+    const flame = ctx.createRadialGradient(impact.x, impact.y - radius * 0.25, 0, impact.x, impact.y, radius * 1.35);
+
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.52, fade * 0.72);
+    ctx.fillStyle = "rgb(29 23 18 / 0.72)";
+    ctx.beginPath();
+    ctx.ellipse(impact.x, impact.y + scaled(8), scorchRadius * 1.22, scorchRadius * 0.42, -0.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = fade * 0.85;
+    flame.addColorStop(0, "rgb(255 219 112 / 0.68)");
+    flame.addColorStop(0.38, level >= 3 ? "rgb(209 65 20 / 0.56)" : "rgb(217 91 25 / 0.45)");
+    flame.addColorStop(1, "rgb(74 31 18 / 0)");
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.ellipse(impact.x, impact.y - radius * 0.08, radius * 0.72, radius * (0.85 + level * 0.12), -0.18, 0, Math.PI * 2);
+    ctx.fill();
+
+    impact.smoke.forEach((smoke) => {
+      const x = impact.x + Math.cos(smoke.angle) * smoke.speed * progress + smoke.drift * progress;
+      const y = impact.y + Math.sin(smoke.angle) * smoke.speed * progress - scaled(10 + level * 3) * progress;
+      const smokeSize = smoke.size * (0.72 + progress * 0.72);
+      ctx.globalAlpha = fade * (0.2 + level * 0.05) * (1 - progress * 0.45);
+      ctx.fillStyle = level >= 3 ? "rgb(38 34 30 / 0.72)" : "rgb(56 48 40 / 0.58)";
       ctx.beginPath();
-      ctx.arc(x, y, radius * (2.8 + level * 0.35), 0, Math.PI * 2);
+      ctx.ellipse(x, y, smokeSize * 1.2, smokeSize * 0.72, smoke.angle * 0.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = level >= 3 ? "#fff0a3" : "#fff4a3";
+    });
+
+    impact.sparks.forEach((spark) => {
+      const localProgress = Math.max(0, Math.min(1, progress - spark.lifeOffset));
+      if (localProgress <= 0) return;
+      const distance = spark.speed * localProgress;
+      const x = impact.x + Math.cos(spark.angle) * distance;
+      const y = impact.y + Math.sin(spark.angle) * distance - scaled(10) * localProgress * (1 - localProgress);
+      ctx.globalAlpha = fade * (0.62 - localProgress * 0.36);
+      ctx.fillStyle = localProgress < 0.35 ? "#f4c46f" : level >= 3 ? "#c95324" : "#d66c2b";
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.arc(x, y, spark.size * (1 - localProgress * 0.45), 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
+    });
+    ctx.restore();
+  });
 }
 
 function drawStoneballProjectile(projectile) {
@@ -2490,6 +3037,7 @@ function draw() {
   drawPath();
   drawSlots();
   drawProjectiles();
+  drawFireImpacts();
   drawBattleActors();
   drawLabels();
 }
@@ -2508,12 +3056,12 @@ function renderWaveButtons() {
 
   const countdown = state.waveStartCountdown === null ? null : Math.ceil(state.waveStartCountdown);
   const canvasRect = canvas.getBoundingClientRect();
-  const signature = `${state.waveIndex}:${countdown ?? "ready"}:${Math.round(canvasRect.width)}:${Math.round(canvasRect.height)}`;
+  const signature = `${state.waveIndex}:${countdown ?? "ready"}:${Math.round(canvasRect.width)}:${Math.round(canvasRect.height)}:${state.uiScale.toFixed(2)}`;
   if (signature === waveButtonSignature) return;
   waveButtonSignature = signature;
   ui.waveControl.innerHTML = entrancePathsForWave(level.waves[state.waveIndex])
     .map((path) => {
-      const entrance = clampStagePoint(stagePointFromCanvasPoint(path.points[0]), 40);
+      const entrance = clampStagePoint(stagePointFromCanvasPoint(path.points[0]), 40 * state.uiScale);
       const label = countdown === null ? "战" : countdown;
       return `
         <button class="start-wave" type="button" data-path-id="${path.id}" style="left:${entrance.x}px; top:${entrance.y}px" title="${path.name}">
@@ -2524,17 +3072,22 @@ function renderWaveButtons() {
     .join("");
 }
 
+function skillButtonContent(cooldown, isDead) {
+  if (isDead) return `<span class="skill-cooldown">倒地</span>`;
+  if (cooldown > 0) return `<span class="skill-cooldown">${Math.ceil(cooldown)}</span>`;
+  return "";
+}
+
 function renderUi() {
   ui.stats.innerHTML = [
-    ["hp", "♥", `${state.hp}`],
-    ["gold", "●", `${state.gold}`],
-    ["wave", "☠", `${Math.min(state.waveIndex + 1, level.waves.length)}/${level.waves.length}`],
-    ["speed", "▶", `${state.speed}x`]
+    ["hp", `${state.hp}`],
+    ["gold", `${state.gold}`],
+    ["wave", `${Math.min(state.waveIndex + 1, level.waves.length)}/${level.waves.length}`]
   ]
     .map(
-      ([type, icon, value]) => `
+      ([type, value]) => `
         <div class="stat">
-          <span class="stat-icon ${type}">${icon}</span>
+          <span class="stat-icon ${type}" aria-hidden="true"></span>
           <strong>${value}</strong>
         </div>
       `
@@ -2570,9 +3123,9 @@ function renderUi() {
     ? `<span class="hero-revive-count">${Math.ceil(state.hero.reviveTimer)}</span>`
     : "";
   ui.skillBuff.disabled = state.hero.buffCooldown > 0 || state.hero.isDead;
-  ui.skillBuff.textContent = state.hero.isDead ? "倒地" : state.hero.buffCooldown > 0 ? `${state.hero.buffCooldown.toFixed(0)}s` : level.hero.skills[0].name.slice(0, 2);
+  ui.skillBuff.innerHTML = skillButtonContent(state.hero.buffCooldown, state.hero.isDead);
   ui.skillLine.disabled = state.hero.lineCooldown > 0 || state.hero.isDead;
-  ui.skillLine.textContent = state.hero.isDead ? "倒地" : state.hero.lineCooldown > 0 ? `${state.hero.lineCooldown.toFixed(0)}s` : level.hero.skills[1].name.slice(0, 2);
+  ui.skillLine.innerHTML = skillButtonContent(state.hero.lineCooldown, state.hero.isDead);
   ui.togglePause.textContent = state.paused ? "▶" : "II";
   renderWaveButtons();
   updateTowerPopupState();
@@ -2605,11 +3158,11 @@ function towerIntroText(tower) {
 }
 
 const towerMenuIcons = {
-  arrow_tower: "./assets/tower_menu_icons/dragon_tower.jpg",
-  crossbow_tower: "./assets/tower_menu_icons/watch_tower.jpg",
-  magic_tower: "./assets/tower_menu_icons/magic_tower.jpg",
-  fire_tower: "./assets/tower_menu_icons/fire_tower.jpg",
-  watchtower: "./assets/tower_menu_icons/cannon_tower.jpg"
+  arrow_tower: "./assets/tower_menu_icons/dragon_tower.jpg?v=20260514-menu-icons-v4",
+  crossbow_tower: "./assets/tower_menu_icons/watch_tower.jpg?v=20260514-menu-icons-v4",
+  magic_tower: "./assets/tower_menu_icons/magic_tower.jpg?v=20260514-menu-icons-v4",
+  fire_tower: "./assets/tower_menu_icons/fire_tower.jpg?v=20260514-menu-icons-v4",
+  watchtower: "./assets/tower_menu_icons/cannon_tower.jpg?v=20260514-menu-icons-v4"
 };
 
 function towerIconSrc(tower) {
@@ -2684,13 +3237,35 @@ function updateTowerPopupState() {
   });
 }
 
+function updateUiScale() {
+  const stageRect = ui.stage.getBoundingClientRect();
+  const nextScale = Math.max(UI_MIN_SCALE, Math.min(1, stageRect.width / UI_BASE_STAGE_WIDTH));
+  const rankingPanelWidth = Math.min((stageRect.width * 1260) / 2048, (stageRect.height * 1260) / 1152);
+  const failurePanelWidth = Math.min(stageRect.width, (stageRect.height * 2048) / 1143);
+  document.documentElement.style.setProperty("--ranking-panel-width", `${rankingPanelWidth.toFixed(2)}px`);
+  document.documentElement.style.setProperty("--failure-panel-width", `${failurePanelWidth.toFixed(2)}px`);
+  if (Math.abs(nextScale - state.uiScale) < 0.005) return;
+  state.uiScale = nextScale;
+  ui.stage.style.setProperty("--ui-scale", nextScale.toFixed(3));
+  ui.stage.style.setProperty("--top-left-top", `${20 * nextScale}px`);
+  ui.stage.style.setProperty("--top-left-left", `${54 * nextScale}px`);
+  ui.stage.style.setProperty("--top-right-top", `${22 * nextScale}px`);
+  ui.stage.style.setProperty("--top-right-right", `${42 * nextScale}px`);
+  ui.stage.style.setProperty("--bottom-left-left", `${42 * nextScale}px`);
+  ui.stage.style.setProperty("--bottom-left-bottom", `${22 * nextScale}px`);
+  ui.stage.style.setProperty("--bottom-right-right", `${42 * nextScale}px`);
+  ui.stage.style.setProperty("--bottom-right-bottom", `${24 * nextScale}px`);
+  waveButtonSignature = "";
+  if (state.selectedSlot) positionTowerPopup(state.selectedSlot);
+}
+
 function positionTowerPopup(slot) {
   const stageRect = document.querySelector(".stage").getBoundingClientRect();
   const canvasRect = canvasDisplayRectInStage();
   const x = canvasRect.left + (slot.x / canvas.width) * canvasRect.width;
   const y = canvasRect.top + (slot.y / canvas.height) * canvasRect.height;
-  const marginX = slot.tower ? 160 : 180;
-  const marginY = slot.tower ? 140 : 180;
+  const marginX = (slot.tower ? 160 : 180) * state.uiScale;
+  const marginY = (slot.tower ? 140 : 180) * state.uiScale;
   ui.towerPopup.style.left = `${Math.max(marginX, Math.min(stageRect.width - marginX, x))}px`;
   ui.towerPopup.style.top = `${Math.max(marginY, Math.min(stageRect.height - marginY, y))}px`;
 }
@@ -2761,7 +3336,6 @@ function moveHeroToPath(point) {
   state.hero.moveTarget = state.hero.movePath.shift() || null;
   state.hero.duelEnemyUid = null;
   state.heroMoveMode = false;
-  log(`${level.hero.name}沿道路移动`);
   return true;
 }
 
@@ -2787,8 +3361,12 @@ function showTowerTooltip(slot, event) {
     <p>${towerCounterText(tower)}</p>
     <small>点击升级或拆除</small>
   `;
-  ui.towerTooltip.style.left = `${Math.min(window.innerWidth - 260, stagePoint.x + 18)}px`;
-  ui.towerTooltip.style.top = `${Math.max(18, stagePoint.y - 18)}px`;
+  const stageRect = ui.stage.getBoundingClientRect();
+  const tooltipWidth = 258 * state.uiScale;
+  const tooltipHeight = 118 * state.uiScale;
+  const offset = 18 * state.uiScale;
+  ui.towerTooltip.style.left = `${Math.min(stageRect.width - tooltipWidth - offset, stagePoint.x + offset)}px`;
+  ui.towerTooltip.style.top = `${Math.max(offset, Math.min(stageRect.height - tooltipHeight - offset, stagePoint.y - offset))}px`;
   ui.towerTooltip.classList.remove("hidden");
 }
 
@@ -2804,7 +3382,6 @@ canvas.addEventListener("click", (event) => {
     hideTowerPopup();
     state.heroMoveMode = true;
     AudioSystem.heroSelect();
-    log(`已选中${level.hero.name}，点击道路任意位置放置`);
     return;
   }
 
@@ -2816,7 +3393,7 @@ canvas.addEventListener("click", (event) => {
 
   if (state.heroMoveMode) {
     hideTowerPopup();
-    if (!moveHeroToPath(point)) log("只能把英雄放置在敌军行径道路上");
+    moveHeroToPath(point);
     return;
   }
 
@@ -2852,6 +3429,31 @@ function playMenuSelect() {
   AudioSystem.uiSelect();
 }
 
+let hoveredButton = null;
+
+document.addEventListener(
+  "pointerdown",
+  () => {
+    AudioSystem.unlock();
+  },
+  { capture: true, once: true }
+);
+
+document.addEventListener("pointerover", (event) => {
+  if (event.pointerType === "touch") return;
+  const button = event.target.closest("button");
+  if (!button || button.disabled || button === hoveredButton) return;
+  hoveredButton = button;
+  AudioSystem.uiHover();
+});
+
+document.addEventListener("pointerout", (event) => {
+  if (!hoveredButton) return;
+  const nextTarget = event.relatedTarget;
+  if (nextTarget instanceof Node && hoveredButton.contains(nextTarget)) return;
+  hoveredButton = null;
+});
+
 function setStageMode(mode) {
   appState.mode = mode;
   ui.stage.classList.toggle("is-menu", mode === "menu");
@@ -2883,10 +3485,60 @@ function enterGame() {
   setStageMode("playing");
 }
 
+function backToHome() {
+  window.location.reload();
+}
+
+function restartLevel() {
+  state.hp = level.base.initial_hp;
+  state.gold = level.economy.initial_gold;
+  state.waveIndex = 0;
+  state.waveActive = false;
+  state.waveStartCountdown = null;
+  state.paused = false;
+  state.speed = 1;
+  state.selectedTowerId = level.towers[0].id;
+  state.selectedSlot = null;
+  state.heroMoveMode = false;
+  state.hoveredSlot = null;
+  state.slots = level.map.tower_slots.map((slot) => ({
+    ...slot,
+    ...slotLayout[slot.position],
+    tower: null
+  }));
+  state.enemies = [];
+  state.projectiles = [];
+  state.fireImpacts = [];
+  state.towerAnimations = [];
+  state.spawnQueue = [];
+  state.spawnTimer = 0;
+  state.bossSpawnTimer = null;
+  state.nextEnemyId = 1;
+  state.hero = createInitialHeroState();
+  resetHeroPosition();
+  state.bossSpeedBuffTimer = 0;
+  state.gameOver = false;
+  state.victory = false;
+  pendingResult = null;
+  state.time = 0;
+  state.lastTime = performance.now();
+  waveButtonSignature = "";
+  hideTowerPopup();
+  hideTowerTooltip();
+  ui.resultModal.classList.add("hidden");
+  ui.rankingModal.classList.add("hidden");
+  setStageMode("playing");
+  ui.introScreen.classList.add("hidden");
+  ui.startScreen.classList.add("hidden");
+  ui.introVideo.pause();
+  ui.introVideo.removeAttribute("src");
+  ui.introVideo.load();
+}
+
 ui.menuStart.addEventListener("click", beginIntro);
 ui.menuRanking.addEventListener("click", () => {
   playMenuSelect();
-  log("排行榜功能预留中");
+  openRanking();
 });
 ui.skipIntro.addEventListener("click", enterGame);
 ui.introVideo.addEventListener("ended", enterGame);
@@ -2921,21 +3573,20 @@ ui.togglePause.addEventListener("click", () => {
   if (appState.mode !== "playing") return;
   state.paused = !state.paused;
 });
-ui.restart.addEventListener("click", () => window.location.reload());
-ui.toggleLog.addEventListener("click", () => {
-  ui.logPanel.classList.toggle("collapsed");
-});
+ui.backHome.addEventListener("click", backToHome);
+ui.restart.addEventListener("click", restartLevel);
 ui.skillBuff.addEventListener("click", useBuffSkill);
 ui.skillLine.addEventListener("click", useLineSkill);
-ui.closeResult.addEventListener("click", () => ui.resultModal.classList.add("hidden"));
-document.querySelectorAll("[data-speed]").forEach((button) => {
-  button.addEventListener("click", () => {
-    state.speed = Number(button.dataset.speed);
-    document.querySelectorAll("[data-speed]").forEach((target) => target.classList.toggle("active", target === button));
-  });
+ui.resultNext.addEventListener("click", submitResultToRanking);
+ui.resultRanking.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && pendingResult) submitResultToRanking();
 });
+ui.resultRestart.addEventListener("click", restartLevel);
+ui.resultBack.addEventListener("click", backToHome);
+ui.closeRanking.addEventListener("click", () => ui.rankingModal.classList.add("hidden"));
 
 function loop(now) {
+  updateUiScale();
   const dt = (now - state.lastTime) / 1000;
   state.lastTime = now;
   update(dt);
@@ -2944,7 +3595,7 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+window.addEventListener("resize", updateUiScale);
+updateUiScale();
 renderTowerPopup();
-log("虎牢关防御部署完成");
-document.querySelector('[data-speed="1"]').classList.add("active");
 requestAnimationFrame(loop);

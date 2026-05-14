@@ -4,10 +4,10 @@
 
 推荐规格：
 
-- 雪碧图尺寸：3840x2880
-- 单帧尺寸：960x960
+- 雪碧图尺寸：1536x1152
+- 单帧尺寸：384x384
 - 排布：4 列 x 3 行
-- 背景：透明底优先；黑底或白底也可，运行时会抠掉接近纯黑/纯白的底色
+- 背景：透明底优先，会按原透明通道直接绘制；黑底或白底的非透明素材，运行时会抠掉接近纯黑/纯白的底色
 
 ## Heroes
 
@@ -51,22 +51,3 @@
 - `enemies/iron_cavalry/`
 - `enemies/warlock/`
 - `enemies/eagle_scout/`
-
-## Missing Assets
-
-以下路径已被代码预留；补齐同名 PNG 后会自动启用。
-
-- `heroes/lvbu/idle.png`
-- `heroes/lvbu/walk.png`
-- `heroes/lvbu/attack.png`
-- `heroes/lvbu/skill1.png`
-- `heroes/lvbu/skill2.png`
-- `heroes/lvbu/death.png`
-- `enemies/warlock/walk_side.png`
-- `enemies/warlock/walk_front.png`
-- `enemies/warlock/walk_back.png`
-- `enemies/warlock/attack.png`
-- `enemies/eagle_scout/walk_side.png`
-- `enemies/eagle_scout/walk_front.png`
-- `enemies/eagle_scout/walk_back.png`
-- `enemies/eagle_scout/attack.png`
