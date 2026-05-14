@@ -232,8 +232,8 @@ mapVideo.play().catch(() => {});
 const AudioSystem = (() => {
   const sources = {
     music: {
-      battle: "./assets/audio/bgm_hulaoguan_ambient.mp3",
-      boss: "./assets/audio/bgm_hulaoguan_boss_loop.wav"
+      battle: "./assets/audio/bgm_hulaoguan_ambient.mp3?v=20260514-bgm-v2",
+      boss: "./assets/audio/bgm_hulaoguan_boss_loop.wav?v=20260514-bgm-v2"
     },
     stinger: "./assets/audio/stinger_wave_start_short.wav",
     build: "./assets/audio/tower_build_01.ogg",
