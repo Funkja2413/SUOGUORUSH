@@ -56,9 +56,163 @@ const UI_BASE_STAGE_WIDTH = 1280;
 const UI_MIN_SCALE = 0.75;
 const RANKING_STORAGE_KEY = `sanguo-rush-ranking:${level.level_id}`;
 const MAX_RANKING_RECORDS = 20;
+const ASSET_PACK_VERSION = "20260514-pack-v1";
+const assetPackBlobUrls = new Map();
+const assetPackState = {
+  loaded: false,
+  failed: false,
+  assets: {},
+  startedAt: null,
+  manifestAt: null,
+  responseAt: null,
+  loadedAt: null,
+  bytes: 0,
+  error: null
+};
+
+function canonicalAssetKey(src = "") {
+  try {
+    const url = new URL(src, window.location.href);
+    const assetIndex = url.pathname.indexOf("assets/");
+    return assetIndex >= 0 ? url.pathname.slice(assetIndex) : url.pathname.replace(/^\//, "");
+  } catch {
+    const cleanSrc = src.split("?")[0].replace(/^\.\//, "");
+    const assetIndex = cleanSrc.indexOf("assets/");
+    return assetIndex >= 0 ? cleanSrc.slice(assetIndex) : cleanSrc;
+  }
+}
+
+function assetPackHas(src) {
+  return assetPackBlobUrls.has(canonicalAssetKey(src));
+}
+
+function assetUrl(src) {
+  return assetPackBlobUrls.get(canonicalAssetKey(src)) || src;
+}
+
+function updatePreloadProgress(done, total) {
+  const percent = total ? Math.round((done / total) * 100) : 100;
+  if (ui.preloadProgress) ui.preloadProgress.style.width = `${percent}%`;
+  if (ui.preloadText) ui.preloadText.textContent = `${percent}%`;
+}
+
+function installPackedStyleAssets() {
+  const packed = (src) => `url("${assetUrl(src)}")`;
+  const style = document.createElement("style");
+  style.textContent = `
+    :root {
+      --game-cursor: ${packed("./assets/ui/game_cursor.svg")} 5 4, auto;
+    }
+    .preload-screen {
+      background:
+        linear-gradient(rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.55)),
+        ${packed("./assets/start_background.jpg")} center / cover no-repeat,
+        #231915;
+    }
+    .start-screen {
+      background:
+        linear-gradient(rgb(0 0 0 / 0.03), rgb(0 0 0 / 0.1)),
+        ${packed("./assets/start_background.jpg")} center / cover no-repeat,
+        #231915;
+    }
+    .stat-icon.hp { background-image: ${packed("./assets/ui/hud_hp.png")}; }
+    .stat-icon.gold { background-image: ${packed("./assets/ui/hud_gold.png")}; }
+    .stat-icon.wave { background-image: ${packed("./assets/ui/hud_wave.png")}; }
+    .hero-portrait {
+      --hero-portrait-image: ${packed("./assets/ui/hero_lvbu_portrait.png?v=20260512-hud-portrait-fix")};
+    }
+    #skillBuff { --skill-icon: ${packed("./assets/ui/hero_lvbu_skill_sweep_20260513_v4.png")}; }
+    #skillLine { --skill-icon: ${packed("./assets/ui/hero_lvbu_skill_warcry_20260513_v4.png")}; }
+    #resultModal.is-success .dialog {
+      background-image: ${packed("./assets/ui/result_success_1.png")};
+    }
+    #resultModal.is-success.stars-2 .dialog {
+      background-image: ${packed("./assets/ui/result_success_2.png")};
+    }
+    #resultModal.is-success.stars-3 .dialog {
+      background-image: ${packed("./assets/ui/result_success_3.png")};
+    }
+    #resultModal.is-success .result-actions button {
+      background-image: ${packed("./assets/ui/result_next.png")};
+    }
+    #resultModal.is-failure .dialog {
+      background-image: ${packed("./assets/ui/result_failure_panel.png")};
+    }
+    #resultModal.is-failure #resultRestart {
+      background-image: ${packed("./assets/ui/result_retry.png")};
+    }
+    #resultModal.is-failure #resultBack {
+      background-image: ${packed("./assets/ui/result_home.png")};
+    }
+    .ranking-dialog {
+      background-image: ${packed("./assets/ui/ranking_panel.png")};
+    }
+    .ranking-dialog .dialog-close {
+      background-image: ${packed("./assets/ui/ranking_close.png")};
+    }
+  `;
+  document.head.append(style);
+}
+
+async function loadAssetPack() {
+  assetPackState.startedAt = performance.now();
+  try {
+    updatePreloadProgress(1, 100);
+    const manifestResponse = await fetch(`./assets/preload-pack.manifest.json?v=${ASSET_PACK_VERSION}`, { cache: "force-cache" });
+    if (!manifestResponse.ok) throw new Error("Asset pack manifest missing");
+    const manifest = await manifestResponse.json();
+    assetPackState.manifestAt = performance.now();
+    assetPackState.assets = manifest.assets || {};
+
+    const packResponse = await fetch(`./assets/${manifest.pack}?v=${ASSET_PACK_VERSION}`, { cache: "force-cache" });
+    assetPackState.responseAt = performance.now();
+    if (!packResponse.ok) throw new Error("Asset pack missing");
+    const contentLength = Number(packResponse.headers.get("content-length") || 0);
+    const chunks = [];
+    let received = 0;
+    if (packResponse.body?.getReader) {
+      const reader = packResponse.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.byteLength;
+        assetPackState.bytes = received;
+        if (contentLength) updatePreloadProgress(Math.min(70, 5 + Math.round((received / contentLength) * 65)), 100);
+      }
+    } else {
+      chunks.push(new Uint8Array(await packResponse.arrayBuffer()));
+      assetPackState.bytes = chunks[0].byteLength;
+      updatePreloadProgress(70, 100);
+    }
+
+    const packBlob = new Blob(chunks, { type: "application/octet-stream" });
+    assetPackState.bytes = packBlob.size;
+    Object.entries(assetPackState.assets).forEach(([key, entry]) => {
+      const blob = packBlob.slice(entry.offset, entry.offset + entry.size, entry.type || "application/octet-stream");
+      assetPackBlobUrls.set(key, URL.createObjectURL(blob));
+    });
+    assetPackState.loaded = true;
+    assetPackState.loadedAt = performance.now();
+    installPackedStyleAssets();
+    document.querySelectorAll("img[data-asset-src]").forEach((image) => {
+      image.src = assetUrl(image.dataset.assetSrc);
+    });
+    updatePreloadProgress(72, 100);
+  } catch (error) {
+    assetPackState.failed = true;
+    assetPackState.error = String(error?.message || error);
+    document.querySelectorAll("img[data-asset-src]").forEach((image) => {
+      image.src = image.dataset.assetSrc;
+    });
+    console.warn("Asset pack unavailable, falling back to individual files.", error);
+  }
+}
+
+await loadAssetPack();
 
 const mapImage = new Image();
-mapImage.src = "./assets/hulaoguan_map.jpg?v=20260514-map-jpg-v1";
+mapImage.src = assetUrl("./assets/hulaoguan_map.jpg?v=20260514-map-jpg-v1");
 const mapVideo = document.createElement("video");
 mapVideo.src = "./assets/hulaoguan_map_loop.mp4?v=20260509-video-env-v3";
 mapVideo.muted = true;
@@ -180,7 +334,7 @@ const AudioSystem = (() => {
   }
 
   function makeAudio(src, { loop = false, volume = 1 } = {}) {
-    const audio = new Audio(src);
+    const audio = new Audio(assetUrl(src));
     audio.preload = "auto";
     audio.loop = loop;
     audio.volume = musicEnabled ? volume : 0;
@@ -387,74 +541,74 @@ const AudioSystem = (() => {
       playSample(victory ? "resultVictory" : "resultDefeat", victory ? sources.upgrade : sources.heroDeath, baseVolumes.result, 0.5);
     },
     preloadSources() {
-      return [...new Set(flattenSources(sources))];
+      return [...new Set(flattenSources(sources).filter((src) => !assetPackHas(src)))];
     }
   };
 })();
 const pathMaskImage = new Image();
-pathMaskImage.src = "./assets/path_mask.png";
+pathMaskImage.src = assetUrl("./assets/path_mask.png");
 const heroIdleImage = new Image();
-heroIdleImage.src = "./assets/characters/heroes/liubei/idle.png";
+heroIdleImage.src = assetUrl("./assets/characters/heroes/liubei/idle.png");
 const heroWalkImage = new Image();
-heroWalkImage.src = "./assets/characters/heroes/liubei/walk.png";
+heroWalkImage.src = assetUrl("./assets/characters/heroes/liubei/walk.png");
 const heroAttackImage = new Image();
-heroAttackImage.src = "./assets/characters/heroes/liubei/attack.png?v=20260514-liubei-attack-v2";
+heroAttackImage.src = assetUrl("./assets/characters/heroes/liubei/attack.png?v=20260514-liubei-attack-v2");
 const heroSkill1Image = new Image();
-heroSkill1Image.src = "./assets/characters/heroes/liubei/skill1.png";
+heroSkill1Image.src = assetUrl("./assets/characters/heroes/liubei/skill1.png");
 const heroSkill2Image = new Image();
-heroSkill2Image.src = "./assets/characters/heroes/liubei/skill2.png";
+heroSkill2Image.src = assetUrl("./assets/characters/heroes/liubei/skill2.png");
 const heroDeathImage = new Image();
-heroDeathImage.src = "./assets/characters/heroes/liubei/death.png";
+heroDeathImage.src = assetUrl("./assets/characters/heroes/liubei/death.png");
 const lvbuIdleImage = new Image();
-lvbuIdleImage.src = "./assets/characters/heroes/lvbu/idle.png";
+lvbuIdleImage.src = assetUrl("./assets/characters/heroes/lvbu/idle.png");
 const lvbuWalkImage = new Image();
-lvbuWalkImage.src = "./assets/characters/heroes/lvbu/walk.png";
+lvbuWalkImage.src = assetUrl("./assets/characters/heroes/lvbu/walk.png");
 const lvbuAttackImage = new Image();
-lvbuAttackImage.src = "./assets/characters/heroes/lvbu/attack.png";
+lvbuAttackImage.src = assetUrl("./assets/characters/heroes/lvbu/attack.png");
 const lvbuSkill1Image = new Image();
-lvbuSkill1Image.src = "./assets/characters/heroes/lvbu/skill1.png";
+lvbuSkill1Image.src = assetUrl("./assets/characters/heroes/lvbu/skill1.png");
 const lvbuSkill2Image = new Image();
-lvbuSkill2Image.src = "./assets/characters/heroes/lvbu/skill2.png";
+lvbuSkill2Image.src = assetUrl("./assets/characters/heroes/lvbu/skill2.png");
 const lvbuDeathImage = new Image();
-lvbuDeathImage.src = "./assets/characters/heroes/lvbu/death.png";
+lvbuDeathImage.src = assetUrl("./assets/characters/heroes/lvbu/death.png");
 const knifeSoldierWalkImage = new Image();
-knifeSoldierWalkImage.src = "./assets/characters/enemies/knife_soldier/walk_side.png";
+knifeSoldierWalkImage.src = assetUrl("./assets/characters/enemies/knife_soldier/walk_side.png");
 const knifeSoldierWalkFrontImage = new Image();
-knifeSoldierWalkFrontImage.src = "./assets/characters/enemies/knife_soldier/walk_front.png";
+knifeSoldierWalkFrontImage.src = assetUrl("./assets/characters/enemies/knife_soldier/walk_front.png");
 const knifeSoldierWalkBackImage = new Image();
-knifeSoldierWalkBackImage.src = "./assets/characters/enemies/knife_soldier/walk_back.png";
+knifeSoldierWalkBackImage.src = assetUrl("./assets/characters/enemies/knife_soldier/walk_back.png");
 const knifeSoldierAttackImage = new Image();
-knifeSoldierAttackImage.src = "./assets/characters/enemies/knife_soldier/attack.png";
+knifeSoldierAttackImage.src = assetUrl("./assets/characters/enemies/knife_soldier/attack.png");
 const ironCavalryWalkImage = new Image();
-ironCavalryWalkImage.src = "./assets/characters/enemies/iron_cavalry/walk_side.png";
+ironCavalryWalkImage.src = assetUrl("./assets/characters/enemies/iron_cavalry/walk_side.png");
 const ironCavalryWalkFrontImage = new Image();
-ironCavalryWalkFrontImage.src = "./assets/characters/enemies/iron_cavalry/walk_front.png";
+ironCavalryWalkFrontImage.src = assetUrl("./assets/characters/enemies/iron_cavalry/walk_front.png");
 const ironCavalryWalkBackImage = new Image();
-ironCavalryWalkBackImage.src = "./assets/characters/enemies/iron_cavalry/walk_back.png";
+ironCavalryWalkBackImage.src = assetUrl("./assets/characters/enemies/iron_cavalry/walk_back.png");
 const ironCavalryAttackImage = new Image();
-ironCavalryAttackImage.src = "./assets/characters/enemies/iron_cavalry/attack.png";
+ironCavalryAttackImage.src = assetUrl("./assets/characters/enemies/iron_cavalry/attack.png");
 const warlockWalkImage = new Image();
-warlockWalkImage.src = "./assets/characters/enemies/warlock/walk_side.png";
+warlockWalkImage.src = assetUrl("./assets/characters/enemies/warlock/walk_side.png");
 const warlockWalkFrontImage = new Image();
-warlockWalkFrontImage.src = "./assets/characters/enemies/warlock/walk_front.png";
+warlockWalkFrontImage.src = assetUrl("./assets/characters/enemies/warlock/walk_front.png");
 const warlockWalkBackImage = new Image();
-warlockWalkBackImage.src = "./assets/characters/enemies/warlock/walk_back.png";
+warlockWalkBackImage.src = assetUrl("./assets/characters/enemies/warlock/walk_back.png");
 const warlockAttackImage = new Image();
-warlockAttackImage.src = "./assets/characters/enemies/warlock/attack.png";
+warlockAttackImage.src = assetUrl("./assets/characters/enemies/warlock/attack.png");
 const eagleScoutWalkImage = new Image();
-eagleScoutWalkImage.src = "./assets/characters/enemies/eagle_scout/walk_side.png";
+eagleScoutWalkImage.src = assetUrl("./assets/characters/enemies/eagle_scout/walk_side.png");
 const eagleScoutWalkFrontImage = new Image();
-eagleScoutWalkFrontImage.src = "./assets/characters/enemies/eagle_scout/walk_front.png";
+eagleScoutWalkFrontImage.src = assetUrl("./assets/characters/enemies/eagle_scout/walk_front.png");
 const eagleScoutWalkBackImage = new Image();
-eagleScoutWalkBackImage.src = "./assets/characters/enemies/eagle_scout/walk_back.png";
+eagleScoutWalkBackImage.src = assetUrl("./assets/characters/enemies/eagle_scout/walk_back.png");
 const eagleScoutAttackImage = new Image();
-eagleScoutAttackImage.src = "./assets/characters/enemies/eagle_scout/attack.png";
+eagleScoutAttackImage.src = assetUrl("./assets/characters/enemies/eagle_scout/attack.png");
 
 const towerVisuals = Object.fromEntries(
   level.towers.flatMap((tower) =>
     (tower.visual?.levels || []).map((visual) => {
       const image = new Image();
-      image.src = visual.image;
+      image.src = assetUrl(visual.image);
       return [`${tower.id}:${visual.level}`, { ...visual, image }];
     })
   )
@@ -1015,12 +1169,6 @@ function absoluteUrl(src) {
   return new URL(src, window.location.href).href;
 }
 
-function updatePreloadProgress(done, total) {
-  const percent = total ? Math.round((done / total) * 100) : 100;
-  if (ui.preloadProgress) ui.preloadProgress.style.width = `${percent}%`;
-  if (ui.preloadText) ui.preloadText.textContent = `${percent}%`;
-}
-
 const preloadDebugEnabled = new URLSearchParams(window.location.search).has("debugPreload");
 const preloadDebugState = {
   enabled: preloadDebugEnabled,
@@ -1085,6 +1233,21 @@ function renderPreloadDebugPanel() {
     .sort((a, b) => b.duration - a.duration)
     .slice(0, 12);
   const failed = records.filter((record) => record.error).slice(0, 8);
+  const packDuration = assetPackState.loadedAt && assetPackState.startedAt
+    ? `${((assetPackState.loadedAt - assetPackState.startedAt) / 1000).toFixed(2)}s`
+    : assetPackState.failed
+      ? "failed"
+      : "loading";
+  const packDetails = [];
+  if (assetPackState.manifestAt && assetPackState.startedAt) {
+    packDetails.push(`manifest ${((assetPackState.manifestAt - assetPackState.startedAt) / 1000).toFixed(2)}s`);
+  }
+  if (assetPackState.responseAt && assetPackState.manifestAt) {
+    packDetails.push(`resp ${((assetPackState.responseAt - assetPackState.manifestAt) / 1000).toFixed(2)}s`);
+  }
+  if (assetPackState.loadedAt && assetPackState.responseAt) {
+    packDetails.push(`body ${((assetPackState.loadedAt - assetPackState.responseAt) / 1000).toFixed(2)}s`);
+  }
   const formatRecord = (record) => {
     const details = [];
     if (record.responseAt) details.push(`resp ${((record.responseAt - record.startedAt) / 1000).toFixed(2)}s`);
@@ -1103,6 +1266,7 @@ function renderPreloadDebugPanel() {
   const lines = [
     `preload ${preloadDebugState.done}/${preloadDebugState.total} · ${((now - preloadDebugState.startedAt) / 1000).toFixed(1)}s`,
     `active ${preloadDebugState.active} · queued ${preloadDebugState.queued} · concurrency ${preloadDebugState.concurrency}`,
+    `asset pack ${packDuration} · ${Math.round(assetPackState.bytes / 1024)}KB${packDetails.length ? ` (${packDetails.join(", ")})` : ""}${assetPackState.error ? ` :: ${assetPackState.error}` : ""}`,
     "",
     "pending:",
     ...(pending.length
@@ -1278,7 +1442,7 @@ async function preloadGameAssets() {
     eagleScoutAttackImage,
     ...Object.values(towerVisuals).map((visual) => visual.image)
   ];
-  const imageSources = [...new Set(cssPreloadImages.map(absoluteUrl))];
+  const imageSources = [...new Set(cssPreloadImages.map((src) => absoluteUrl(assetUrl(src))))];
   const fetchSources = [
     appState.introSrc,
     mapVideo.src,
@@ -1498,7 +1662,7 @@ const bossDashSkill = bossSkills.dash_forward || { name: "突进", distance: 0, 
 const bossSpeedSkill = bossSkills.enemy_speed_up || { name: "号令", value: 0, duration: 0, cooldown: Infinity };
 ui.heroPortrait?.style.setProperty(
   "--hero-portrait-image",
-  'url("../assets/ui/hero_lvbu_portrait.png?v=20260512-hud-portrait-fix")'
+  `url("${assetUrl("./assets/ui/hero_lvbu_portrait.png?v=20260512-hud-portrait-fix")}")`
 );
 const heroStart = interpolatePath(state.hero.progress, pathById[state.hero.pathId]);
 state.hero.x = heroStart.x;
@@ -3548,7 +3712,8 @@ const towerMenuIcons = {
 };
 
 function towerIconSrc(tower) {
-  return towerMenuIcons[tower.id] || tower.visual?.levels?.[0]?.image || "";
+  const src = towerMenuIcons[tower.id] || tower.visual?.levels?.[0]?.image || "";
+  return src ? assetUrl(src) : "";
 }
 
 function renderTowerPopup() {
