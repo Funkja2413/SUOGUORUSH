@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sanguo Rush LB</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260514-asset-pack-v1" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260514-loading-v1" />
   </head>
   <body>
     <main class="app">
@@ -12,11 +12,13 @@
         <canvas id="game" width="2784" height="1536" aria-label="虎牢关塔防战场"></canvas>
 
         <div class="preload-screen screen-layer" id="preloadScreen" aria-label="资源加载页面">
-          <div class="preload-title">虎牢关战备中</div>
-          <div class="preload-bar" aria-hidden="true">
-            <div class="preload-progress" id="preloadProgress"></div>
+          <img class="preload-logo" src="./assets/ui/loading_logo.webp?v=20260514-loading-v1" alt="Sanguo Rush LB" draggable="false" />
+          <div class="preload-meter" aria-hidden="true">
+            <div class="preload-bar">
+              <div class="preload-progress" id="preloadProgress"></div>
+            </div>
+            <div class="preload-text" id="preloadText">0%</div>
           </div>
-          <div class="preload-text" id="preloadText">0%</div>
         </div>
 
         <div class="start-screen screen-layer" id="startScreen" aria-label="游戏开始页面">
@@ -116,6 +118,6 @@
       </div>
     </div>
 
-    <script type="module" src="./src/game.js?v=20260514-bgm-v2"></script>
+    <script type="module" src="./src/game.js?v=20260514-loading-v1"></script>
   </body>
 </html>

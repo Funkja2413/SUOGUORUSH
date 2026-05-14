@@ -58,6 +58,8 @@ const RANKING_STORAGE_KEY = `sanguo-rush-ranking:${level.level_id}`;
 const MAX_RANKING_RECORDS = 20;
 const ASSET_PACK_VERSION = "20260514-pack-v2";
 const assetPackBlobUrls = new Map();
+const urlParams = new URLSearchParams(window.location.search);
+const holdPreloadScreen = urlParams.has("holdPreload");
 const assetPackState = {
   loaded: false,
   failed: false,
@@ -105,7 +107,7 @@ function installPackedStyleAssets() {
     }
     .preload-screen {
       background:
-        linear-gradient(rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.55)),
+        linear-gradient(rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.72)),
         ${packed("./assets/start_background.jpg")} center / cover no-repeat,
         #231915;
     }
@@ -1177,7 +1179,7 @@ function absoluteUrl(src) {
   return new URL(src, window.location.href).href;
 }
 
-const preloadDebugEnabled = new URLSearchParams(window.location.search).has("debugPreload");
+const preloadDebugEnabled = urlParams.has("debugPreload");
 const preloadDebugState = {
   enabled: preloadDebugEnabled,
   startedAt: performance.now(),
@@ -1476,7 +1478,7 @@ async function preloadGameAssets() {
   prepareLoadedSprites();
   ui.menuStart.disabled = false;
   ui.menuRanking.disabled = false;
-  ui.preloadScreen.classList.add("is-complete");
+  if (!holdPreloadScreen) ui.preloadScreen.classList.add("is-complete");
 }
 
 const paths = [
