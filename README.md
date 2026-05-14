@@ -1,7 +1,7 @@
 # 虎牢关塔防
 
 一个无依赖静态塔防原型，基于 `data/level_001_hulaoguan.json` 实现核心玩法闭环。
-地图动态背景层使用循环视频 `assets/hulaoguan_map_loop.mp4`，加载前回退到 `assets/hulaoguan_map.png`。
+地图动态背景层使用循环视频 `assets/hulaoguan_map_loop.mp4`，加载前回退到 `assets/hulaoguan_map.jpg`。
 角色动画素材统一使用 `assets/characters/` 目录，命名规范见 `assets/characters/README.md`。
 路径识别 mask 使用 `assets/path_mask.png`，仅用于逻辑判定，不会绘制到地图上。
 战场 canvas 使用 2x 内部分辨率渲染，保持画面比例不变但提升角色与地图清晰度。

@@ -58,7 +58,7 @@ const RANKING_STORAGE_KEY = `sanguo-rush-ranking:${level.level_id}`;
 const MAX_RANKING_RECORDS = 20;
 
 const mapImage = new Image();
-mapImage.src = "./assets/hulaoguan_map.png?v=20260509-video-env-v3";
+mapImage.src = "./assets/hulaoguan_map.jpg?v=20260514-map-jpg-v1";
 const mapVideo = document.createElement("video");
 mapVideo.src = "./assets/hulaoguan_map_loop.mp4?v=20260509-video-env-v3";
 mapVideo.muted = true;
