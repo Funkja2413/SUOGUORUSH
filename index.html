@@ -11,6 +11,14 @@
       <section class="stage is-menu" id="stage">
         <canvas id="game" width="2784" height="1536" aria-label="虎牢关塔防战场"></canvas>
 
+        <div class="preload-screen screen-layer" id="preloadScreen" aria-label="资源加载页面">
+          <div class="preload-title">虎牢关战备中</div>
+          <div class="preload-bar" aria-hidden="true">
+            <div class="preload-progress" id="preloadProgress"></div>
+          </div>
+          <div class="preload-text" id="preloadText">0%</div>
+        </div>
+
         <div class="start-screen screen-layer" id="startScreen" aria-label="游戏开始页面">
           <div class="start-audio-controls" aria-label="声音设置">
             <button class="menu-toggle is-on" id="menuToggleMusic" type="button" title="配乐开关">
@@ -24,10 +32,10 @@
           </div>
 
           <div class="menu-actions" aria-label="主菜单">
-            <button class="menu-image-button menu-start" id="menuStart" type="button" aria-label="开始游戏">
+            <button class="menu-image-button menu-start" id="menuStart" type="button" aria-label="开始游戏" disabled>
               <img src="./assets/start_button.png" alt="" draggable="false" />
             </button>
-            <button class="menu-image-button menu-ranking" id="menuRanking" type="button" aria-label="排行榜">
+            <button class="menu-image-button menu-ranking" id="menuRanking" type="button" aria-label="排行榜" disabled>
               <img src="./assets/ranking_button.png" alt="" draggable="false" />
             </button>
           </div>

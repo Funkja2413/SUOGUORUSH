@@ -12,6 +12,9 @@ const ui = {
   introVideo: document.querySelector("#introVideo"),
   introFallback: document.querySelector("#introFallback"),
   skipIntro: document.querySelector("#skipIntro"),
+  preloadScreen: document.querySelector("#preloadScreen"),
+  preloadProgress: document.querySelector("#preloadProgress"),
+  preloadText: document.querySelector("#preloadText"),
   stats: document.querySelector("#stats"),
   towerPopup: document.querySelector("#towerPopup"),
   towerTooltip: document.querySelector("#towerTooltip"),
@@ -168,6 +171,13 @@ const AudioSystem = (() => {
   let sfxAudioContext = null;
   const lastPlayed = new Map();
   const samplePool = new Map();
+
+  function flattenSources(value, result = []) {
+    if (typeof value === "string") result.push(value);
+    else if (Array.isArray(value)) value.forEach((item) => flattenSources(item, result));
+    else if (value && typeof value === "object") Object.values(value).forEach((item) => flattenSources(item, result));
+    return result;
+  }
 
   function makeAudio(src, { loop = false, volume = 1 } = {}) {
     const audio = new Audio(src);
@@ -375,6 +385,9 @@ const AudioSystem = (() => {
     },
     result(victory) {
       playSample(victory ? "resultVictory" : "resultDefeat", victory ? sources.upgrade : sources.heroDeath, baseVolumes.result, 0.5);
+    },
+    preloadSources() {
+      return [...new Set(flattenSources(sources))];
     }
   };
 })();
@@ -924,6 +937,182 @@ eagleScoutWalkBackImage.addEventListener("load", () => {
 eagleScoutAttackImage.addEventListener("load", () => {
   prepareSpriteSheet(eagleScoutAttackImage, eagleScoutAttackSprite);
 });
+
+const spritePrepares = [
+  [heroIdleImage, heroIdleSprite],
+  [heroWalkImage, heroWalkSprite],
+  [heroAttackImage, heroAttackSprite],
+  [heroSkill1Image, heroSkill1Sprite],
+  [heroSkill2Image, heroSkill2Sprite],
+  [heroDeathImage, heroDeathSprite],
+  [lvbuIdleImage, lvbuIdleSprite],
+  [lvbuWalkImage, lvbuWalkSprite],
+  [lvbuAttackImage, lvbuAttackSprite],
+  [lvbuSkill1Image, lvbuSkill1Sprite],
+  [lvbuSkill2Image, lvbuSkill2Sprite],
+  [lvbuDeathImage, lvbuDeathSprite],
+  [knifeSoldierWalkImage, knifeSoldierWalkSprite, { preserveOriginal: true }],
+  [knifeSoldierWalkFrontImage, knifeSoldierWalkFrontSprite, { preserveOriginal: true }],
+  [knifeSoldierWalkBackImage, knifeSoldierWalkBackSprite, { preserveOriginal: true }],
+  [knifeSoldierAttackImage, knifeSoldierAttackSprite, { preserveOriginal: true }],
+  [ironCavalryWalkImage, ironCavalryWalkSprite, { preserveOriginal: true }],
+  [ironCavalryWalkFrontImage, ironCavalryWalkFrontSprite, { preserveOriginal: true }],
+  [ironCavalryWalkBackImage, ironCavalryWalkBackSprite, { preserveOriginal: true }],
+  [ironCavalryAttackImage, ironCavalryAttackSprite, { preserveOriginal: true }],
+  [warlockWalkImage, warlockWalkSprite],
+  [warlockWalkFrontImage, warlockWalkFrontSprite],
+  [warlockWalkBackImage, warlockWalkBackSprite],
+  [warlockAttackImage, warlockAttackSprite],
+  [eagleScoutWalkImage, eagleScoutWalkSprite],
+  [eagleScoutWalkFrontImage, eagleScoutWalkFrontSprite],
+  [eagleScoutWalkBackImage, eagleScoutWalkBackSprite],
+  [eagleScoutAttackImage, eagleScoutAttackSprite]
+];
+
+function prepareLoadedSprites() {
+  if (pathMaskImage.complete && pathMaskImage.naturalWidth && !pathMask.ready) {
+    pathMask.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pathMask.ctx.drawImage(pathMaskImage, 0, 0, canvas.width, canvas.height);
+    buildPathMaskGrid();
+    pathMask.ready = true;
+  }
+
+  spritePrepares.forEach(([image, sprite, options]) => {
+    if (image.complete && image.naturalWidth && !sprite.ready) {
+      prepareSpriteSheet(image, sprite, options);
+    }
+  });
+}
+
+const cssPreloadImages = [
+  "./assets/start_background.jpg",
+  "./assets/start_button.png",
+  "./assets/ranking_button.png",
+  "./assets/ui/game_cursor.svg",
+  "./assets/ui/hud_hp.png",
+  "./assets/ui/hud_gold.png",
+  "./assets/ui/hud_wave.png",
+  "./assets/ui/hero_lvbu_portrait.png?v=20260512-hud-portrait-fix",
+  "./assets/ui/hero_lvbu_skill_sweep_20260513_v4.png",
+  "./assets/ui/hero_lvbu_skill_warcry_20260513_v4.png",
+  "./assets/ui/result_success_1.png",
+  "./assets/ui/result_success_2.png",
+  "./assets/ui/result_success_3.png",
+  "./assets/ui/result_next.png",
+  "./assets/ui/result_failure_panel.png",
+  "./assets/ui/result_retry.png",
+  "./assets/ui/result_home.png",
+  "./assets/ui/ranking_panel.png",
+  "./assets/ui/ranking_close.png",
+  "./assets/tower_menu_icons/dragon_tower.jpg?v=20260514-menu-icons-v4",
+  "./assets/tower_menu_icons/watch_tower.jpg?v=20260514-menu-icons-v4",
+  "./assets/tower_menu_icons/magic_tower.jpg?v=20260514-menu-icons-v4",
+  "./assets/tower_menu_icons/fire_tower.jpg?v=20260514-menu-icons-v4",
+  "./assets/tower_menu_icons/cannon_tower.jpg?v=20260514-menu-icons-v4"
+];
+
+function absoluteUrl(src) {
+  return new URL(src, window.location.href).href;
+}
+
+function updatePreloadProgress(done, total) {
+  const percent = total ? Math.round((done / total) * 100) : 100;
+  if (ui.preloadProgress) ui.preloadProgress.style.width = `${percent}%`;
+  if (ui.preloadText) ui.preloadText.textContent = `${percent}%`;
+}
+
+function waitForImage(image) {
+  if (image.complete && image.naturalWidth) {
+    return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    image.addEventListener("load", () => {
+      if (image.decode) image.decode().catch(() => {}).then(resolve);
+      else resolve();
+    }, { once: true });
+    image.addEventListener("error", reject, { once: true });
+  });
+}
+
+function preloadImageSource(src) {
+  const image = new Image();
+  image.src = src;
+  return waitForImage(image);
+}
+
+async function preloadFetchAsset(src) {
+  const response = await fetch(src, { cache: "force-cache" });
+  if (!response.ok) throw new Error(`Failed to preload ${src}`);
+  await response.blob();
+}
+
+async function preloadGameAssets() {
+  ui.menuStart.disabled = true;
+  ui.menuRanking.disabled = true;
+
+  const imageElements = [
+    mapImage,
+    pathMaskImage,
+    heroIdleImage,
+    heroWalkImage,
+    heroAttackImage,
+    heroSkill1Image,
+    heroSkill2Image,
+    heroDeathImage,
+    lvbuIdleImage,
+    lvbuWalkImage,
+    lvbuAttackImage,
+    lvbuSkill1Image,
+    lvbuSkill2Image,
+    lvbuDeathImage,
+    knifeSoldierWalkImage,
+    knifeSoldierWalkFrontImage,
+    knifeSoldierWalkBackImage,
+    knifeSoldierAttackImage,
+    ironCavalryWalkImage,
+    ironCavalryWalkFrontImage,
+    ironCavalryWalkBackImage,
+    ironCavalryAttackImage,
+    warlockWalkImage,
+    warlockWalkFrontImage,
+    warlockWalkBackImage,
+    warlockAttackImage,
+    eagleScoutWalkImage,
+    eagleScoutWalkFrontImage,
+    eagleScoutWalkBackImage,
+    eagleScoutAttackImage,
+    ...Object.values(towerVisuals).map((visual) => visual.image)
+  ];
+  const imageSources = [...new Set(cssPreloadImages.map(absoluteUrl))];
+  const fetchSources = [
+    appState.introSrc,
+    mapVideo.src,
+    ...AudioSystem.preloadSources()
+  ].map(absoluteUrl);
+  const tasks = [
+    ...imageElements.map((image) => () => waitForImage(image)),
+    ...imageSources.map((src) => () => preloadImageSource(src)),
+    ...[...new Set(fetchSources)].map((src) => () => preloadFetchAsset(src))
+  ];
+
+  let done = 0;
+  updatePreloadProgress(done, tasks.length);
+  await Promise.all(tasks.map(async (task) => {
+    try {
+      await task();
+    } catch (error) {
+      console.warn(error);
+    } finally {
+      done += 1;
+      updatePreloadProgress(done, tasks.length);
+    }
+  }));
+
+  prepareLoadedSprites();
+  ui.menuStart.disabled = false;
+  ui.menuRanking.disabled = false;
+  ui.preloadScreen.classList.add("is-complete");
+}
 
 const paths = [
   {
@@ -3598,4 +3787,5 @@ function loop(now) {
 window.addEventListener("resize", updateUiScale);
 updateUiScale();
 renderTowerPopup();
+preloadGameAssets();
 requestAnimationFrame(loop);
