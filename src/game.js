@@ -56,6 +56,10 @@ const UI_BASE_STAGE_WIDTH = 1280;
 const UI_MIN_SCALE = 0.75;
 const RANKING_STORAGE_KEY = `sanguo-rush-ranking:${level.level_id}`;
 const MAX_RANKING_RECORDS = 20;
+const SUPABASE_URL = "https://hxvpymkbdnqentnbayyp.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4dnB5bWtiZG5xZW50bmJheXlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MzIzNjYsImV4cCI6MjA5NDMwODM2Nn0.qYRIrwjP4f_l9dtecenHcRnWgI2dYLIAzBFnZkUaqcw";
+const RANKING_API_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 const ASSET_PACK_VERSION = "20260514-pack-v2";
 const assetPackBlobUrls = new Map();
 const urlParams = new URLSearchParams(window.location.search);
@@ -2489,6 +2493,95 @@ function saveRankingRecord(result, playerName = "") {
   };
 }
 
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, (char) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    };
+    return entities[char];
+  });
+}
+
+function rankingHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+    ...extra
+  };
+}
+
+function rankingRowToRecord(row) {
+  return {
+    levelId: row.level_id,
+    levelName: row.level_name,
+    player: row.player,
+    score: row.score,
+    stars: row.stars,
+    victory: row.victory,
+    hp: row.hp,
+    hpLost: row.hp_lost,
+    completionTime: row.completion_time,
+    completedAt: row.completed_at
+  };
+}
+
+function rankingRecordToRow(record) {
+  return {
+    level_id: record.levelId,
+    level_name: record.levelName,
+    player: record.player,
+    score: record.score,
+    stars: record.stars,
+    victory: record.victory !== false,
+    hp: record.hp,
+    hp_lost: record.hpLost,
+    completion_time: record.completionTime,
+    completed_at: record.completedAt
+  };
+}
+
+async function fetchCloudRankingRecords() {
+  if (!RANKING_API_ENABLED) return null;
+  const params = new URLSearchParams({
+    level_id: `eq.${level.level_id}`,
+    order: "victory.desc,score.desc,completion_time.asc,hp.desc",
+    limit: String(MAX_RANKING_RECORDS)
+  });
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rankings?${params.toString()}`, {
+    headers: rankingHeaders()
+  });
+  if (!response.ok) throw new Error(`Ranking fetch failed: ${response.status}`);
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows.map(rankingRowToRecord) : [];
+}
+
+async function saveCloudRankingRecord(record) {
+  if (!RANKING_API_ENABLED) return null;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rankings`, {
+    method: "POST",
+    headers: rankingHeaders({ Prefer: "return=representation" }),
+    body: JSON.stringify(rankingRecordToRow(record))
+  });
+  if (!response.ok) throw new Error(`Ranking save failed: ${response.status}`);
+  const rows = await response.json();
+  return Array.isArray(rows) && rows[0] ? rankingRowToRecord(rows[0]) : record;
+}
+
+async function loadRankingRecordsForDisplay() {
+  try {
+    const cloudRecords = await fetchCloudRankingRecords();
+    return cloudRecords || loadRankingRecords();
+  } catch (error) {
+    console.warn(error);
+    return loadRankingRecords();
+  }
+}
+
 function renderRanking(records = loadRankingRecords()) {
   if (!ui.rankingList) return;
   const visibleRecords = records.slice(0, MAX_RANKING_RECORDS);
@@ -2505,7 +2598,7 @@ function renderRanking(records = loadRankingRecords()) {
         <div class="ranking-row">
           <strong>${index + 1}</strong>
           <div>
-            <b>${record.player || "玩家"}</b>
+            <b>${escapeHtml(record.player || "玩家")}</b>
             <span>${record.victory !== false ? "通关" : "失败"} · ${record.stars} 星 · ${formatTime(record.completionTime)} · 剩余城防 ${record.hp}/${level.base.max_hp}</span>
           </div>
           <em>${record.score}</em>
@@ -2550,8 +2643,8 @@ function renderResultRanking(records, currentRecord) {
   `;
 }
 
-function openRanking(records) {
-  renderRanking(records);
+async function openRanking(records) {
+  renderRanking(records || (await loadRankingRecordsForDisplay()));
   ui.rankingModal.classList.remove("hidden");
 }
 
@@ -2576,13 +2669,19 @@ function setResultActions(mode) {
   ui.resultBack.classList.toggle("hidden", mode !== "failure");
 }
 
-function submitResultToRanking() {
+async function submitResultToRanking() {
   if (!pendingResult) return;
   const playerName = ui.resultRanking.querySelector("#resultPlayerName")?.value || "";
   const ranking = saveRankingRecord(pendingResult, playerName);
   pendingResult = null;
   ui.resultModal.classList.add("hidden");
-  openRanking(ranking.records);
+  try {
+    await saveCloudRankingRecord(ranking.record);
+    openRanking(await loadRankingRecordsForDisplay());
+  } catch (error) {
+    console.warn(error);
+    openRanking(ranking.records);
+  }
 }
 
 function showResult(victory) {
