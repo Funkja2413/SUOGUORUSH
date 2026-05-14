@@ -1,0 +1,7 @@
+.git
+.DS_Store
+dist-cloudflare/
+dist-cloudflare.zip
+cloudflare-pages-demo.zip
+downloaded_audio_sources/
+review_audio/
