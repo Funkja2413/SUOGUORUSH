@@ -59,7 +59,6 @@ const MAX_RANKING_RECORDS = 20;
 const ASSET_PACK_VERSION = "20260514-pack-v2";
 const assetPackBlobUrls = new Map();
 const urlParams = new URLSearchParams(window.location.search);
-const holdPreloadScreen = urlParams.has("holdPreload");
 const assetPackState = {
   loaded: false,
   failed: false,
@@ -1478,14 +1477,7 @@ async function preloadGameAssets() {
   prepareLoadedSprites();
   ui.menuStart.disabled = false;
   ui.menuRanking.disabled = false;
-  if (holdPreloadScreen) {
-    ui.preloadScreen.classList.remove("is-complete");
-    ui.preloadScreen.style.opacity = "1";
-    ui.preloadScreen.style.visibility = "visible";
-    ui.preloadScreen.style.pointerEvents = "auto";
-  } else {
-    ui.preloadScreen.classList.add("is-complete");
-  }
+  ui.preloadScreen.classList.add("is-complete");
 }
 
 const paths = [
