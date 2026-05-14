@@ -56,7 +56,7 @@ const UI_BASE_STAGE_WIDTH = 1280;
 const UI_MIN_SCALE = 0.75;
 const RANKING_STORAGE_KEY = `sanguo-rush-ranking:${level.level_id}`;
 const MAX_RANKING_RECORDS = 20;
-const ASSET_PACK_VERSION = "20260514-pack-v1";
+const ASSET_PACK_VERSION = "20260514-pack-v2";
 const assetPackBlobUrls = new Map();
 const assetPackState = {
   loaded: false,
@@ -164,31 +164,39 @@ async function loadAssetPack() {
     assetPackState.manifestAt = performance.now();
     assetPackState.assets = manifest.assets || {};
 
-    const packResponse = await fetch(`./assets/${manifest.pack}?v=${ASSET_PACK_VERSION}`, { cache: "force-cache" });
-    assetPackState.responseAt = performance.now();
-    if (!packResponse.ok) throw new Error("Asset pack missing");
-    const contentLength = Number(packResponse.headers.get("content-length") || 0);
-    const chunks = [];
+    const packEntries = manifest.packs || (manifest.pack ? [{ file: manifest.pack, size: 0 }] : []);
+    const totalPackBytes = packEntries.reduce((sum, pack) => sum + (pack.size || 0), 0);
     let received = 0;
-    if (packResponse.body?.getReader) {
-      const reader = packResponse.body.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        received += value.byteLength;
+    const packBlobs = [];
+    for (const [packIndex, pack] of packEntries.entries()) {
+      const packResponse = await fetch(`./assets/${pack.file}?v=${ASSET_PACK_VERSION}`, { cache: "force-cache" });
+      assetPackState.responseAt ||= performance.now();
+      if (!packResponse.ok) throw new Error(`Asset pack missing: ${pack.file}`);
+      const contentLength = Number(packResponse.headers.get("content-length") || pack.size || 0);
+      const chunks = [];
+      if (packResponse.body?.getReader) {
+        const reader = packResponse.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.byteLength;
+          assetPackState.bytes = received;
+          const expectedBytes = totalPackBytes || contentLength * packEntries.length;
+          if (expectedBytes) updatePreloadProgress(Math.min(70, 5 + Math.round((received / expectedBytes) * 65)), 100);
+        }
+      } else {
+        const bytes = new Uint8Array(await packResponse.arrayBuffer());
+        chunks.push(bytes);
+        received += bytes.byteLength;
         assetPackState.bytes = received;
-        if (contentLength) updatePreloadProgress(Math.min(70, 5 + Math.round((received / contentLength) * 65)), 100);
+        updatePreloadProgress(Math.min(70, 5 + Math.round(((packIndex + 1) / packEntries.length) * 65)), 100);
       }
-    } else {
-      chunks.push(new Uint8Array(await packResponse.arrayBuffer()));
-      assetPackState.bytes = chunks[0].byteLength;
-      updatePreloadProgress(70, 100);
+      packBlobs[packIndex] = new Blob(chunks, { type: "application/octet-stream" });
     }
-
-    const packBlob = new Blob(chunks, { type: "application/octet-stream" });
-    assetPackState.bytes = packBlob.size;
+    assetPackState.bytes = packBlobs.reduce((sum, blob) => sum + blob.size, 0);
     Object.entries(assetPackState.assets).forEach(([key, entry]) => {
+      const packBlob = packBlobs[entry.pack || 0];
       const blob = packBlob.slice(entry.offset, entry.offset + entry.size, entry.type || "application/octet-stream");
       assetPackBlobUrls.set(key, URL.createObjectURL(blob));
     });

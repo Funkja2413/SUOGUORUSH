@@ -5,8 +5,9 @@ import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const assetsRoot = path.join(root, "assets");
 const outputDir = assetsRoot;
-const packName = "preload-pack.bin";
+const packPrefix = "preload-pack-";
 const manifestName = "preload-pack.manifest.json";
+const maxPackBytes = 8 * 1024 * 1024;
 
 const includeExtensions = new Set([
   ".png",
@@ -59,17 +60,37 @@ const files = (await walk(assetsRoot))
   .sort((a, b) => a.key.localeCompare(b.key));
 
 let offset = 0;
+let packIndex = 0;
 const chunks = [];
+const packs = [];
 const manifest = {
   version: new Date().toISOString(),
-  pack: packName,
+  packs: [],
   assets: {}
 };
 
+await mkdir(outputDir, { recursive: true });
+
+async function flushPack() {
+  if (!chunks.length) return;
+  const file = `${packPrefix}${String(packIndex + 1).padStart(2, "0")}.bin`;
+  const bytes = Buffer.concat(chunks);
+  await writeFile(path.join(outputDir, file), bytes);
+  packs.push({ file, size: bytes.byteLength });
+  manifest.packs.push({ file, size: bytes.byteLength });
+  chunks.length = 0;
+  offset = 0;
+  packIndex += 1;
+}
+
 for (const file of files) {
   const bytes = await readFile(file.fullPath);
+  if (chunks.length && offset + bytes.byteLength > maxPackBytes) {
+    await flushPack();
+  }
   const ext = path.extname(file.key).toLowerCase();
   manifest.assets[file.key] = {
+    pack: packIndex,
     offset,
     size: bytes.byteLength,
     type: mimeByExtension.get(ext) || "application/octet-stream"
@@ -78,9 +99,9 @@ for (const file of files) {
   offset += bytes.byteLength;
 }
 
-await mkdir(outputDir, { recursive: true });
-await writeFile(path.join(outputDir, packName), Buffer.concat(chunks));
+await flushPack();
 await writeFile(path.join(outputDir, manifestName), `${JSON.stringify(manifest, null, 2)}\n`);
 
-const mb = (offset / 1024 / 1024).toFixed(2);
-console.log(`Packed ${files.length} assets into ${packName} (${mb} MB)`);
+const totalBytes = packs.reduce((sum, pack) => sum + pack.size, 0);
+const mb = (totalBytes / 1024 / 1024).toFixed(2);
+console.log(`Packed ${files.length} assets into ${packs.length} files (${mb} MB)`);

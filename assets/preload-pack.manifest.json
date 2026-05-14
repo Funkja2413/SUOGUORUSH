@@ -1,504 +1,621 @@
 {
-  "version": "2026-05-14T09:05:10.601Z",
-  "pack": "preload-pack.bin",
+  "version": "2026-05-14T09:14:09.709Z",
+  "packs": [
+    {
+      "file": "preload-pack-01.bin",
+      "size": 8371855
+    },
+    {
+      "file": "preload-pack-02.bin",
+      "size": 8199735
+    },
+    {
+      "file": "preload-pack-03.bin",
+      "size": 8118595
+    },
+    {
+      "file": "preload-pack-04.bin",
+      "size": 7550300
+    }
+  ],
   "assets": {
     "assets/audio/enemy_attack_cavalry_heavy_01.ogg": {
+      "pack": 0,
       "offset": 0,
       "size": 23180,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_cavalry_heavy_02.ogg": {
+      "pack": 0,
       "offset": 23180,
       "size": 18606,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_cavalry_trot_01.ogg": {
+      "pack": 0,
       "offset": 41786,
       "size": 138357,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_eagle_screech_01.ogg": {
+      "pack": 0,
       "offset": 180143,
       "size": 21935,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_eagle_screech_02.ogg": {
+      "pack": 0,
       "offset": 202078,
       "size": 24142,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_sword_01.ogg": {
+      "pack": 0,
       "offset": 226220,
       "size": 13071,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_sword_02.ogg": {
+      "pack": 0,
       "offset": 239291,
       "size": 13635,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_sword_03.ogg": {
+      "pack": 0,
       "offset": 252926,
       "size": 15612,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_warlock_spell_01.ogg": {
+      "pack": 0,
       "offset": 268538,
       "size": 59071,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_attack_warlock_spell_02.ogg": {
+      "pack": 0,
       "offset": 327609,
       "size": 39689,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_death_cavalry_01.wav": {
+      "pack": 0,
       "offset": 367298,
       "size": 158446,
       "type": "audio/wav"
     },
     "assets/audio/enemy_death_cavalry_02.wav": {
+      "pack": 0,
       "offset": 525744,
       "size": 202546,
       "type": "audio/wav"
     },
     "assets/audio/enemy_death_eagle_screech_01.ogg": {
+      "pack": 0,
       "offset": 728290,
       "size": 18073,
       "type": "audio/ogg"
     },
     "assets/audio/enemy_death_shout_01.wav": {
+      "pack": 0,
       "offset": 746363,
       "size": 48196,
       "type": "audio/wav"
     },
     "assets/audio/enemy_death_shout_02.wav": {
+      "pack": 0,
       "offset": 794559,
       "size": 48196,
       "type": "audio/wav"
     },
     "assets/audio/enemy_death_shout_03.wav": {
+      "pack": 0,
       "offset": 842755,
       "size": 26146,
       "type": "audio/wav"
     },
     "assets/audio/enemy_death_warlock_01.mp3": {
+      "pack": 0,
       "offset": 868901,
       "size": 32384,
       "type": "audio/mpeg"
     },
     "assets/audio/enemy_death_warlock_02.mp3": {
+      "pack": 0,
       "offset": 901285,
       "size": 25728,
       "type": "audio/mpeg"
     },
     "assets/audio/hero_attack_01.ogg": {
+      "pack": 0,
       "offset": 927013,
       "size": 15142,
       "type": "audio/ogg"
     },
     "assets/audio/hero_death_01.ogg": {
+      "pack": 0,
       "offset": 942155,
       "size": 15883,
       "type": "audio/ogg"
     },
     "assets/audio/hero_select_01.ogg": {
+      "pack": 0,
       "offset": 958038,
       "size": 26586,
       "type": "audio/ogg"
     },
     "assets/audio/hero_skill_01.ogg": {
+      "pack": 0,
       "offset": 984624,
       "size": 29121,
       "type": "audio/ogg"
     },
     "assets/audio/stinger_wave_start_short.wav": {
+      "pack": 0,
       "offset": 1013745,
       "size": 356896,
       "type": "audio/wav"
     },
     "assets/audio/tower_arrow_shot_01.ogg": {
+      "pack": 0,
       "offset": 1370641,
       "size": 17776,
       "type": "audio/ogg"
     },
     "assets/audio/tower_build_01.ogg": {
+      "pack": 0,
       "offset": 1388417,
       "size": 22789,
       "type": "audio/ogg"
     },
     "assets/audio/tower_crossbow_shot_01.ogg": {
+      "pack": 0,
       "offset": 1411206,
       "size": 25403,
       "type": "audio/ogg"
     },
     "assets/audio/tower_dismantle_01.ogg": {
+      "pack": 0,
       "offset": 1436609,
       "size": 20667,
       "type": "audio/ogg"
     },
     "assets/audio/tower_fire_shot_01.ogg": {
+      "pack": 0,
       "offset": 1457276,
       "size": 71801,
       "type": "audio/ogg"
     },
     "assets/audio/tower_magic_shot_01.ogg": {
+      "pack": 0,
       "offset": 1529077,
       "size": 79091,
       "type": "audio/ogg"
     },
     "assets/audio/tower_stone_shot_01.ogg": {
+      "pack": 0,
       "offset": 1608168,
       "size": 34170,
       "type": "audio/ogg"
     },
     "assets/audio/tower_upgrade_01.ogg": {
+      "pack": 0,
       "offset": 1642338,
       "size": 31942,
       "type": "audio/ogg"
     },
     "assets/characters/enemies/eagle_scout/attack.png": {
+      "pack": 0,
       "offset": 1674280,
       "size": 333063,
       "type": "image/png"
     },
     "assets/characters/enemies/eagle_scout/walk_back.png": {
+      "pack": 0,
       "offset": 2007343,
       "size": 341333,
       "type": "image/png"
     },
     "assets/characters/enemies/eagle_scout/walk_front.png": {
+      "pack": 0,
       "offset": 2348676,
       "size": 297368,
       "type": "image/png"
     },
     "assets/characters/enemies/eagle_scout/walk_side.png": {
+      "pack": 0,
       "offset": 2646044,
       "size": 297368,
       "type": "image/png"
     },
     "assets/characters/enemies/iron_cavalry/attack.png": {
+      "pack": 0,
       "offset": 2943412,
       "size": 403564,
       "type": "image/png"
     },
     "assets/characters/enemies/iron_cavalry/walk_back.png": {
+      "pack": 0,
       "offset": 3346976,
       "size": 393464,
       "type": "image/png"
     },
     "assets/characters/enemies/iron_cavalry/walk_front.png": {
+      "pack": 0,
       "offset": 3740440,
       "size": 387040,
       "type": "image/png"
     },
     "assets/characters/enemies/iron_cavalry/walk_side.png": {
+      "pack": 0,
       "offset": 4127480,
       "size": 395038,
       "type": "image/png"
     },
     "assets/characters/enemies/knife_soldier/attack.png": {
+      "pack": 0,
       "offset": 4522518,
       "size": 305376,
       "type": "image/png"
     },
     "assets/characters/enemies/knife_soldier/walk_back.png": {
+      "pack": 0,
       "offset": 4827894,
       "size": 214034,
       "type": "image/png"
     },
     "assets/characters/enemies/knife_soldier/walk_front.png": {
+      "pack": 0,
       "offset": 5041928,
       "size": 195872,
       "type": "image/png"
     },
     "assets/characters/enemies/knife_soldier/walk_side.png": {
+      "pack": 0,
       "offset": 5237800,
       "size": 298047,
       "type": "image/png"
     },
     "assets/characters/enemies/warlock/attack.png": {
+      "pack": 0,
       "offset": 5535847,
       "size": 666392,
       "type": "image/png"
     },
     "assets/characters/enemies/warlock/walk_back.png": {
+      "pack": 0,
       "offset": 6202239,
       "size": 365996,
       "type": "image/png"
     },
     "assets/characters/enemies/warlock/walk_front.png": {
+      "pack": 0,
       "offset": 6568235,
       "size": 480688,
       "type": "image/png"
     },
     "assets/characters/enemies/warlock/walk_side.png": {
+      "pack": 0,
       "offset": 7048923,
       "size": 510566,
       "type": "image/png"
     },
     "assets/characters/heroes/liubei/attack.png": {
+      "pack": 0,
       "offset": 7559489,
       "size": 451318,
       "type": "image/png"
     },
     "assets/characters/heroes/liubei/death.png": {
+      "pack": 0,
       "offset": 8010807,
       "size": 361048,
       "type": "image/png"
     },
     "assets/characters/heroes/liubei/idle.png": {
-      "offset": 8371855,
+      "pack": 1,
+      "offset": 0,
       "size": 704941,
       "type": "image/png"
     },
     "assets/characters/heroes/liubei/skill1.png": {
-      "offset": 9076796,
+      "pack": 1,
+      "offset": 704941,
       "size": 706677,
       "type": "image/png"
     },
     "assets/characters/heroes/liubei/skill2.png": {
-      "offset": 9783473,
+      "pack": 1,
+      "offset": 1411618,
       "size": 804009,
       "type": "image/png"
     },
     "assets/characters/heroes/liubei/walk.png": {
-      "offset": 10587482,
+      "pack": 1,
+      "offset": 2215627,
       "size": 507753,
       "type": "image/png"
     },
     "assets/characters/heroes/lvbu/attack.png": {
-      "offset": 11095235,
+      "pack": 1,
+      "offset": 2723380,
       "size": 636090,
       "type": "image/png"
     },
     "assets/characters/heroes/lvbu/death.png": {
-      "offset": 11731325,
+      "pack": 1,
+      "offset": 3359470,
       "size": 470542,
       "type": "image/png"
     },
     "assets/characters/heroes/lvbu/idle.png": {
-      "offset": 12201867,
+      "pack": 1,
+      "offset": 3830012,
       "size": 520148,
       "type": "image/png"
     },
     "assets/characters/heroes/lvbu/skill1.png": {
-      "offset": 12722015,
+      "pack": 1,
+      "offset": 4350160,
       "size": 813790,
       "type": "image/png"
     },
     "assets/characters/heroes/lvbu/skill2.png": {
-      "offset": 13535805,
+      "pack": 1,
+      "offset": 5163950,
       "size": 645785,
       "type": "image/png"
     },
     "assets/characters/heroes/lvbu/walk.png": {
-      "offset": 14181590,
+      "pack": 1,
+      "offset": 5809735,
       "size": 557003,
       "type": "image/png"
     },
     "assets/hulaoguan_map.jpg": {
-      "offset": 14738593,
+      "pack": 1,
+      "offset": 6366738,
       "size": 753769,
       "type": "image/jpeg"
     },
     "assets/path_mask.png": {
-      "offset": 15492362,
+      "pack": 1,
+      "offset": 7120507,
       "size": 97015,
       "type": "image/png"
     },
     "assets/ranking_button.png": {
-      "offset": 15589377,
+      "pack": 1,
+      "offset": 7217522,
       "size": 124964,
       "type": "image/png"
     },
     "assets/start_background.jpg": {
-      "offset": 15714341,
+      "pack": 1,
+      "offset": 7342486,
       "size": 523502,
       "type": "image/jpeg"
     },
     "assets/start_button.png": {
-      "offset": 16237843,
+      "pack": 1,
+      "offset": 7865988,
       "size": 149223,
       "type": "image/png"
     },
     "assets/tower_menu_icons/cannon_tower.jpg": {
-      "offset": 16387066,
+      "pack": 1,
+      "offset": 8015211,
       "size": 36773,
       "type": "image/jpeg"
     },
     "assets/tower_menu_icons/dragon_tower.jpg": {
-      "offset": 16423839,
+      "pack": 1,
+      "offset": 8051984,
       "size": 27473,
       "type": "image/jpeg"
     },
     "assets/tower_menu_icons/fire_tower.jpg": {
-      "offset": 16451312,
+      "pack": 1,
+      "offset": 8079457,
       "size": 39367,
       "type": "image/jpeg"
     },
     "assets/tower_menu_icons/magic_tower.jpg": {
-      "offset": 16490679,
+      "pack": 1,
+      "offset": 8118824,
       "size": 42634,
       "type": "image/jpeg"
     },
     "assets/tower_menu_icons/watch_tower.jpg": {
-      "offset": 16533313,
+      "pack": 1,
+      "offset": 8161458,
       "size": 38277,
       "type": "image/jpeg"
     },
     "assets/towers/arrow_tower/lv1_static.png": {
-      "offset": 16571590,
+      "pack": 2,
+      "offset": 0,
       "size": 481352,
       "type": "image/png"
     },
     "assets/towers/arrow_tower/lv2_idle.png": {
-      "offset": 17052942,
+      "pack": 2,
+      "offset": 481352,
       "size": 604376,
       "type": "image/png"
     },
     "assets/towers/arrow_tower/lv3_idle.png": {
-      "offset": 17657318,
+      "pack": 2,
+      "offset": 1085728,
       "size": 601919,
       "type": "image/png"
     },
     "assets/towers/crossbow_tower/lv1_idle.png": {
-      "offset": 18259237,
+      "pack": 2,
+      "offset": 1687647,
       "size": 715051,
       "type": "image/png"
     },
     "assets/towers/crossbow_tower/lv2_static.png": {
-      "offset": 18974288,
+      "pack": 2,
+      "offset": 2402698,
       "size": 755238,
       "type": "image/png"
     },
     "assets/towers/crossbow_tower/lv3_static.png": {
-      "offset": 19729526,
+      "pack": 2,
+      "offset": 3157936,
       "size": 781614,
       "type": "image/png"
     },
     "assets/towers/fire_tower/lv1_idle.png": {
-      "offset": 20511140,
+      "pack": 2,
+      "offset": 3939550,
       "size": 547909,
       "type": "image/png"
     },
     "assets/towers/fire_tower/lv2_idle.png": {
-      "offset": 21059049,
+      "pack": 2,
+      "offset": 4487459,
       "size": 735991,
       "type": "image/png"
     },
     "assets/towers/fire_tower/lv3_idle.png": {
-      "offset": 21795040,
+      "pack": 2,
+      "offset": 5223450,
       "size": 772519,
       "type": "image/png"
     },
     "assets/towers/magic_tower/lv1_idle.png": {
-      "offset": 22567559,
+      "pack": 2,
+      "offset": 5995969,
       "size": 598892,
       "type": "image/png"
     },
     "assets/towers/magic_tower/lv2_idle.png": {
-      "offset": 23166451,
+      "pack": 2,
+      "offset": 6594861,
       "size": 723554,
       "type": "image/png"
     },
     "assets/towers/magic_tower/lv3_idle.png": {
-      "offset": 23890005,
+      "pack": 2,
+      "offset": 7318415,
       "size": 800180,
       "type": "image/png"
     },
     "assets/towers/watchtower/lv1_idle.png": {
-      "offset": 24690185,
+      "pack": 3,
+      "offset": 0,
       "size": 716292,
       "type": "image/png"
     },
     "assets/towers/watchtower/lv2_idle.png": {
-      "offset": 25406477,
+      "pack": 3,
+      "offset": 716292,
       "size": 793740,
       "type": "image/png"
     },
     "assets/towers/watchtower/lv3_idle.png": {
-      "offset": 26200217,
+      "pack": 3,
+      "offset": 1510032,
       "size": 905380,
       "type": "image/png"
     },
     "assets/ui/game_cursor.svg": {
-      "offset": 27105597,
+      "pack": 3,
+      "offset": 2415412,
       "size": 490,
       "type": "image/svg+xml"
     },
     "assets/ui/hero_lvbu_portrait.png": {
-      "offset": 27106087,
+      "pack": 3,
+      "offset": 2415902,
       "size": 484803,
       "type": "image/png"
     },
     "assets/ui/hero_lvbu_skill_sweep_20260513_v4.png": {
-      "offset": 27590890,
+      "pack": 3,
+      "offset": 2900705,
       "size": 381561,
       "type": "image/png"
     },
     "assets/ui/hero_lvbu_skill_warcry_20260513_v4.png": {
-      "offset": 27972451,
+      "pack": 3,
+      "offset": 3282266,
       "size": 383968,
       "type": "image/png"
     },
     "assets/ui/hud_gold.png": {
-      "offset": 28356419,
+      "pack": 3,
+      "offset": 3666234,
       "size": 14636,
       "type": "image/png"
     },
     "assets/ui/hud_hp.png": {
-      "offset": 28371055,
+      "pack": 3,
+      "offset": 3680870,
       "size": 11874,
       "type": "image/png"
     },
     "assets/ui/hud_wave.png": {
-      "offset": 28382929,
+      "pack": 3,
+      "offset": 3692744,
       "size": 13428,
       "type": "image/png"
     },
     "assets/ui/ranking_close.png": {
-      "offset": 28396357,
+      "pack": 3,
+      "offset": 3706172,
       "size": 46199,
       "type": "image/png"
     },
     "assets/ui/ranking_panel.png": {
-      "offset": 28442556,
+      "pack": 3,
+      "offset": 3752371,
       "size": 527675,
       "type": "image/png"
     },
     "assets/ui/result_failure_panel.png": {
-      "offset": 28970231,
+      "pack": 3,
+      "offset": 4280046,
       "size": 624417,
       "type": "image/png"
     },
     "assets/ui/result_home.png": {
-      "offset": 29594648,
+      "pack": 3,
+      "offset": 4904463,
       "size": 30735,
       "type": "image/png"
     },
     "assets/ui/result_next.png": {
-      "offset": 29625383,
+      "pack": 3,
+      "offset": 4935198,
       "size": 18167,
       "type": "image/png"
     },
     "assets/ui/result_retry.png": {
-      "offset": 29643550,
+      "pack": 3,
+      "offset": 4953365,
       "size": 32582,
       "type": "image/png"
     },
     "assets/ui/result_success_1.png": {
-      "offset": 29676132,
+      "pack": 3,
+      "offset": 4985947,
       "size": 853331,
       "type": "image/png"
     },
     "assets/ui/result_success_2.png": {
-      "offset": 30529463,
+      "pack": 3,
+      "offset": 5839278,
       "size": 854800,
       "type": "image/png"
     },
     "assets/ui/result_success_3.png": {
-      "offset": 31384263,
+      "pack": 3,
+      "offset": 6694078,
       "size": 856222,
       "type": "image/png"
     }
