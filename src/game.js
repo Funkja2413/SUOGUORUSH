@@ -1021,29 +1021,148 @@ function updatePreloadProgress(done, total) {
   if (ui.preloadText) ui.preloadText.textContent = `${percent}%`;
 }
 
-function waitForImage(image) {
+const preloadDebugEnabled = new URLSearchParams(window.location.search).has("debugPreload");
+const preloadDebugState = {
+  enabled: preloadDebugEnabled,
+  startedAt: performance.now(),
+  total: 0,
+  done: 0,
+  records: []
+};
+window.__preloadDebug = preloadDebugState;
+
+function shortAssetName(src = "") {
+  try {
+    const url = new URL(src, window.location.href);
+    return `${url.pathname.replace(/^\//, "")}${url.search}`;
+  } catch {
+    return src;
+  }
+}
+
+function ensurePreloadDebugPanel() {
+  if (!preloadDebugEnabled) return null;
+  const existingPanel = document.querySelector("#preloadDebugPanel");
+  if (existingPanel) return existingPanel;
+  const panel = document.createElement("pre");
+  panel.id = "preloadDebugPanel";
+  panel.style.cssText = [
+    "position:absolute",
+    "right:12px",
+    "top:12px",
+    "z-index:80",
+    "width:min(520px,46vw)",
+    "max-height:72vh",
+    "overflow:auto",
+    "margin:0",
+    "padding:12px",
+    "border:1px solid rgba(255,255,255,.24)",
+    "border-radius:8px",
+    "background:rgba(0,0,0,.78)",
+    "color:#d8ffe2",
+    "font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace",
+    "white-space:pre-wrap",
+    "pointer-events:auto"
+  ].join(";");
+  ui.stage.appendChild(panel);
+  return panel;
+}
+
+function renderPreloadDebugPanel() {
+  const panel = ensurePreloadDebugPanel();
+  if (!panel) return;
+  const now = performance.now();
+  const records = preloadDebugState.records;
+  const pending = records
+    .filter((record) => !record.endedAt)
+    .sort((a, b) => a.startedAt - b.startedAt)
+    .slice(0, 12);
+  const slowest = records
+    .filter((record) => record.endedAt)
+    .sort((a, b) => b.duration - a.duration)
+    .slice(0, 12);
+  const failed = records.filter((record) => record.error).slice(0, 8);
+  const lines = [
+    `preload ${preloadDebugState.done}/${preloadDebugState.total} · ${((now - preloadDebugState.startedAt) / 1000).toFixed(1)}s`,
+    "",
+    "pending:",
+    ...(pending.length
+      ? pending.map((record) => `${((now - record.startedAt) / 1000).toFixed(1)}s ${record.type} ${shortAssetName(record.src)}`)
+      : ["none"]),
+    "",
+    "slowest:",
+    ...(slowest.length
+      ? slowest.map((record) => `${(record.duration / 1000).toFixed(2)}s ${record.type} ${record.bytes ? `${Math.round(record.bytes / 1024)}KB ` : ""}${shortAssetName(record.src)}`)
+      : ["none"]),
+    "",
+    "failed:",
+    ...(failed.length
+      ? failed.map((record) => `${record.type} ${shortAssetName(record.src)} :: ${record.error}`)
+      : ["none"])
+  ];
+  panel.textContent = lines.join("\n");
+}
+
+function preloadRecord(type, src) {
+  const record = {
+    type,
+    src,
+    startedAt: performance.now(),
+    endedAt: null,
+    duration: null,
+    bytes: 0,
+    error: null
+  };
+  preloadDebugState.records.push(record);
+  renderPreloadDebugPanel();
+  return record;
+}
+
+function finishPreloadRecord(record, error = null) {
+  record.endedAt = performance.now();
+  record.duration = record.endedAt - record.startedAt;
+  record.error = error ? String(error?.message || error) : null;
+  renderPreloadDebugPanel();
+}
+
+function waitForImage(image, label = image.currentSrc || image.src) {
+  const record = preloadDebugEnabled ? preloadRecord("img", label) : null;
   if (image.complete && image.naturalWidth) {
-    return image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+    const done = image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+    return done.finally(() => finishPreloadRecord(record));
   }
   return new Promise((resolve, reject) => {
     image.addEventListener("load", () => {
-      if (image.decode) image.decode().catch(() => {}).then(resolve);
-      else resolve();
+      const done = image.decode ? image.decode().catch(() => {}) : Promise.resolve();
+      done.then(resolve).finally(() => finishPreloadRecord(record));
     }, { once: true });
-    image.addEventListener("error", reject, { once: true });
+    image.addEventListener("error", () => {
+      const error = new Error(`Failed to load image ${label}`);
+      finishPreloadRecord(record, error);
+      reject(error);
+    }, { once: true });
   });
 }
 
 function preloadImageSource(src) {
   const image = new Image();
   image.src = src;
-  return waitForImage(image);
+  return waitForImage(image, src);
 }
 
 async function preloadFetchAsset(src) {
-  const response = await fetch(src, { cache: "force-cache" });
-  if (!response.ok) throw new Error(`Failed to preload ${src}`);
-  await response.blob();
+  const record = preloadDebugEnabled ? preloadRecord("fetch", src) : null;
+  try {
+    const response = await fetch(src, { cache: "force-cache" });
+    if (!response.ok) throw new Error(`Failed to preload ${src}`);
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    const blob = await response.blob();
+    if (record) record.bytes = contentLength || blob.size || 0;
+  } catch (error) {
+    finishPreloadRecord(record, error);
+    throw error;
+  }
+  finishPreloadRecord(record);
 }
 
 async function preloadGameAssets() {
@@ -1096,6 +1215,9 @@ async function preloadGameAssets() {
   ];
 
   let done = 0;
+  preloadDebugState.total = tasks.length;
+  preloadDebugState.done = done;
+  renderPreloadDebugPanel();
   updatePreloadProgress(done, tasks.length);
   await Promise.all(tasks.map(async (task) => {
     try {
@@ -1104,7 +1226,9 @@ async function preloadGameAssets() {
       console.warn(error);
     } finally {
       done += 1;
+      preloadDebugState.done = done;
       updatePreloadProgress(done, tasks.length);
+      renderPreloadDebugPanel();
     }
   }));
 
