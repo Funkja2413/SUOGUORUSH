@@ -1027,6 +1027,9 @@ const preloadDebugState = {
   startedAt: performance.now(),
   total: 0,
   done: 0,
+  active: 0,
+  queued: 0,
+  concurrency: 8,
   records: []
 };
 window.__preloadDebug = preloadDebugState;
@@ -1082,17 +1085,33 @@ function renderPreloadDebugPanel() {
     .sort((a, b) => b.duration - a.duration)
     .slice(0, 12);
   const failed = records.filter((record) => record.error).slice(0, 8);
+  const formatRecord = (record) => {
+    const details = [];
+    if (record.responseAt) details.push(`resp ${((record.responseAt - record.startedAt) / 1000).toFixed(2)}s`);
+    if (record.blobAt && record.responseAt) details.push(`blob ${((record.blobAt - record.responseAt) / 1000).toFixed(2)}s`);
+    if (record.loadAt) details.push(`load ${((record.loadAt - record.startedAt) / 1000).toFixed(2)}s`);
+    if (record.decodeAt && record.loadAt) details.push(`decode ${((record.decodeAt - record.loadAt) / 1000).toFixed(2)}s`);
+    return [
+      `${(record.duration / 1000).toFixed(2)}s`,
+      record.type,
+      record.bytes ? `${Math.round(record.bytes / 1024)}KB` : "",
+      record.stage ? `[${record.stage}]` : "",
+      details.length ? `(${details.join(", ")})` : "",
+      shortAssetName(record.src)
+    ].filter(Boolean).join(" ");
+  };
   const lines = [
     `preload ${preloadDebugState.done}/${preloadDebugState.total} · ${((now - preloadDebugState.startedAt) / 1000).toFixed(1)}s`,
+    `active ${preloadDebugState.active} · queued ${preloadDebugState.queued} · concurrency ${preloadDebugState.concurrency}`,
     "",
     "pending:",
     ...(pending.length
-      ? pending.map((record) => `${((now - record.startedAt) / 1000).toFixed(1)}s ${record.type} ${shortAssetName(record.src)}`)
+      ? pending.map((record) => `${((now - record.startedAt) / 1000).toFixed(1)}s ${record.type} ${record.stage ? `[${record.stage}] ` : ""}${shortAssetName(record.src)}`)
       : ["none"]),
     "",
     "slowest:",
     ...(slowest.length
-      ? slowest.map((record) => `${(record.duration / 1000).toFixed(2)}s ${record.type} ${record.bytes ? `${Math.round(record.bytes / 1024)}KB ` : ""}${shortAssetName(record.src)}`)
+      ? slowest.map(formatRecord)
       : ["none"]),
     "",
     "failed:",
@@ -1111,6 +1130,11 @@ function preloadRecord(type, src) {
     endedAt: null,
     duration: null,
     bytes: 0,
+    stage: "queued",
+    responseAt: null,
+    blobAt: null,
+    loadAt: null,
+    decodeAt: null,
     error: null
   };
   preloadDebugState.records.push(record);
@@ -1118,23 +1142,42 @@ function preloadRecord(type, src) {
   return record;
 }
 
+function markPreloadStage(record, stage, timeKey = null) {
+  if (!record) return;
+  record.stage = stage;
+  if (timeKey) record[timeKey] = performance.now();
+  renderPreloadDebugPanel();
+}
+
 function finishPreloadRecord(record, error = null) {
+  if (!record) return;
   record.endedAt = performance.now();
   record.duration = record.endedAt - record.startedAt;
+  record.stage = error ? "failed" : "done";
   record.error = error ? String(error?.message || error) : null;
   renderPreloadDebugPanel();
 }
 
 function waitForImage(image, label = image.currentSrc || image.src) {
   const record = preloadDebugEnabled ? preloadRecord("img", label) : null;
+  markPreloadStage(record, "loading");
   if (image.complete && image.naturalWidth) {
+    markPreloadStage(record, "loaded", "loadAt");
     const done = image.decode ? image.decode().catch(() => {}) : Promise.resolve();
-    return done.finally(() => finishPreloadRecord(record));
+    markPreloadStage(record, "decoding");
+    return done.then(() => {
+      markPreloadStage(record, "decoded", "decodeAt");
+    }).finally(() => finishPreloadRecord(record));
   }
   return new Promise((resolve, reject) => {
     image.addEventListener("load", () => {
+      markPreloadStage(record, "loaded", "loadAt");
       const done = image.decode ? image.decode().catch(() => {}) : Promise.resolve();
-      done.then(resolve).finally(() => finishPreloadRecord(record));
+      markPreloadStage(record, "decoding");
+      done.then(() => {
+        markPreloadStage(record, "decoded", "decodeAt");
+        resolve();
+      }).finally(() => finishPreloadRecord(record));
     }, { once: true });
     image.addEventListener("error", () => {
       const error = new Error(`Failed to load image ${label}`);
@@ -1153,16 +1196,49 @@ function preloadImageSource(src) {
 async function preloadFetchAsset(src) {
   const record = preloadDebugEnabled ? preloadRecord("fetch", src) : null;
   try {
+    markPreloadStage(record, "fetching");
     const response = await fetch(src, { cache: "force-cache" });
+    markPreloadStage(record, "response", "responseAt");
     if (!response.ok) throw new Error(`Failed to preload ${src}`);
     const contentLength = Number(response.headers.get("content-length") || 0);
+    markPreloadStage(record, "blob");
     const blob = await response.blob();
+    markPreloadStage(record, "blobbed", "blobAt");
     if (record) record.bytes = contentLength || blob.size || 0;
   } catch (error) {
     finishPreloadRecord(record, error);
     throw error;
   }
   finishPreloadRecord(record);
+}
+
+async function runPreloadTasks(tasks, concurrency, onSettled) {
+  let cursor = 0;
+  preloadDebugState.concurrency = concurrency;
+  preloadDebugState.queued = tasks.length;
+  preloadDebugState.active = 0;
+
+  async function worker() {
+    while (cursor < tasks.length) {
+      const task = tasks[cursor];
+      cursor += 1;
+      preloadDebugState.queued = Math.max(0, tasks.length - cursor);
+      preloadDebugState.active += 1;
+      renderPreloadDebugPanel();
+      try {
+        await task();
+      } catch (error) {
+        console.warn(error);
+      } finally {
+        preloadDebugState.active -= 1;
+        onSettled();
+        renderPreloadDebugPanel();
+      }
+    }
+  }
+
+  const workerCount = Math.min(concurrency, tasks.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
 }
 
 async function preloadGameAssets() {
@@ -1219,18 +1295,11 @@ async function preloadGameAssets() {
   preloadDebugState.done = done;
   renderPreloadDebugPanel();
   updatePreloadProgress(done, tasks.length);
-  await Promise.all(tasks.map(async (task) => {
-    try {
-      await task();
-    } catch (error) {
-      console.warn(error);
-    } finally {
-      done += 1;
-      preloadDebugState.done = done;
-      updatePreloadProgress(done, tasks.length);
-      renderPreloadDebugPanel();
-    }
-  }));
+  await runPreloadTasks(tasks, preloadDebugState.concurrency, () => {
+    done += 1;
+    preloadDebugState.done = done;
+    updatePreloadProgress(done, tasks.length);
+  });
 
   prepareLoadedSprites();
   ui.menuStart.disabled = false;
