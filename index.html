@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sanguo Rush LB</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260514-loading-mask-v1" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260515-pause-touch-v1" />
   </head>
   <body>
     <main class="app">
@@ -66,8 +66,8 @@
           <button class="icon-button icon-only sound-on" id="toggleSfx" title="音效开关" aria-label="音效开关">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h4l5 4V5L8 9H4z"/><path d="M17 9.5a4 4 0 0 1 0 5"/><path d="M19.4 7a7.5 7.5 0 0 1 0 10"/></svg>
           </button>
-          <button class="icon-button" id="togglePause" title="暂停/继续">II</button>
-          <button class="icon-button" id="restart" title="重开">R</button>
+          <button class="icon-button" id="togglePause" type="button" title="暂停/继续" aria-label="暂停/继续">II</button>
+          <button class="icon-button" id="restart" type="button" title="重开" aria-label="重开">R</button>
         </div>
 
         <div class="hud wave-control" id="waveControl"></div>
@@ -117,6 +117,6 @@
       </div>
     </div>
 
-    <script type="module" src="./src/game.js?v=20260515-safari-sprites-v1"></script>
+    <script type="module" src="./src/game.js?v=20260515-pause-touch-v1"></script>
   </body>
 </html>

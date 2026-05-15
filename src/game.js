@@ -82,6 +82,8 @@ const assetPackState = {
   error: null
 };
 
+const pausePointerEvents = window.PointerEvent ? ["pointerdown"] : ["touchstart", "mousedown"];
+
 function canonicalAssetKey(src = "") {
   try {
     const url = new URL(src, window.location.href);
@@ -4301,9 +4303,17 @@ ui.menuToggleSfx.addEventListener("click", () => {
   AudioSystem.unlock();
   AudioSystem.toggleSfxWithFeedback();
 });
-ui.togglePause.addEventListener("click", () => {
+function togglePause(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
   if (appState.mode !== "playing") return;
+  AudioSystem.unlock();
   state.paused = !state.paused;
+  renderUi();
+}
+
+pausePointerEvents.forEach((eventName) => {
+  ui.togglePause.addEventListener(eventName, togglePause);
 });
 ui.backHome.addEventListener("click", backToHome);
 ui.restart.addEventListener("click", restartLevel);
