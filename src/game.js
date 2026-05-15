@@ -4201,17 +4201,13 @@ function enterGame() {
   setStageMode("playing");
 }
 
-function backToHome() {
-  window.location.reload();
-}
-
-function restartLevel() {
+function resetLevelState({ paused = false } = {}) {
   state.hp = level.base.initial_hp;
   state.gold = level.economy.initial_gold;
   state.waveIndex = 0;
   state.waveActive = false;
   state.waveStartCountdown = null;
-  state.paused = false;
+  state.paused = paused;
   state.speed = 1;
   state.selectedTowerId = level.towers[0].id;
   state.selectedSlot = null;
@@ -4243,12 +4239,22 @@ function restartLevel() {
   hideTowerTooltip();
   ui.resultModal.classList.add("hidden");
   ui.rankingModal.classList.add("hidden");
-  setStageMode("playing");
   ui.introScreen.classList.add("hidden");
-  ui.startScreen.classList.add("hidden");
   ui.introVideo.pause();
   ui.introVideo.removeAttribute("src");
   ui.introVideo.load();
+}
+
+function backToHome() {
+  resetLevelState({ paused: true });
+  setStageMode("menu");
+  ui.startScreen.classList.remove("hidden");
+}
+
+function restartLevel() {
+  resetLevelState({ paused: false });
+  setStageMode("playing");
+  ui.startScreen.classList.add("hidden");
 }
 
 ui.menuStart.addEventListener("click", beginIntro);
