@@ -65,6 +65,11 @@ const RANKING_API_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 const ASSET_PACK_VERSION = "20260514-pack-v2";
 const assetPackBlobUrls = new Map();
 const urlParams = new URLSearchParams(window.location.search);
+const userAgent = navigator.userAgent || "";
+const isAppleWebKit = /AppleWebKit/i.test(userAgent) && /Apple/i.test(navigator.vendor || "");
+const isChromiumLike = /Chrome|CriOS|Chromium|Edg|OPR|Android/i.test(userAgent);
+const isIOSWebKit = /iPad|iPhone|iPod/i.test(userAgent);
+const useDirectCharacterSprites = isIOSWebKit || (isAppleWebKit && !isChromiumLike);
 const assetPackState = {
   loaded: false,
   failed: false,
@@ -93,7 +98,12 @@ function assetPackHas(src) {
   return assetPackBlobUrls.has(canonicalAssetKey(src));
 }
 
+function shouldBypassAssetPack(src) {
+  return useDirectCharacterSprites && canonicalAssetKey(src).startsWith("assets/characters/");
+}
+
 function assetUrl(src) {
+  if (shouldBypassAssetPack(src)) return src;
   return assetPackBlobUrls.get(canonicalAssetKey(src)) || src;
 }
 
