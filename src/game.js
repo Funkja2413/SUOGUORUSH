@@ -45,7 +45,9 @@ const ui = {
 
 const appState = {
   mode: "menu",
-  introSrc: "./assets/intro_cutscene.mp4?v=20260512-intro-v2"
+  introSrc: "./assets/intro_cutscene.mp4?v=20260512-intro-v2",
+  introBlobUrl: null,
+  introReady: false
 };
 
 const level = await fetch("./data/level_001_hulaoguan.json?v=20260514-lvbu-survival-v1").then((res) => res.json());
@@ -1389,6 +1391,57 @@ async function preloadFetchAsset(src) {
   finishPreloadRecord(record);
 }
 
+async function preloadIntroVideo() {
+  const record = preloadDebugEnabled ? preloadRecord("video", appState.introSrc) : null;
+  try {
+    markPreloadStage(record, "fetching");
+    const response = await fetch(appState.introSrc, { cache: "force-cache" });
+    markPreloadStage(record, "response", "responseAt");
+    if (!response.ok) throw new Error(`Failed to preload intro video ${appState.introSrc}`);
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    markPreloadStage(record, "blob");
+    const blob = await response.blob();
+    markPreloadStage(record, "blobbed", "blobAt");
+    if (record) record.bytes = contentLength || blob.size || 0;
+
+    if (appState.introBlobUrl) URL.revokeObjectURL(appState.introBlobUrl);
+    appState.introBlobUrl = URL.createObjectURL(blob);
+    ui.introVideo.preload = "auto";
+    ui.introVideo.src = appState.introBlobUrl;
+    ui.introVideo.load();
+    markPreloadStage(record, "loading");
+    await new Promise((resolve, reject) => {
+      const cleanup = () => {
+        ui.introVideo.removeEventListener("canplaythrough", handleReady);
+        ui.introVideo.removeEventListener("loadeddata", handleReady);
+        ui.introVideo.removeEventListener("error", handleError);
+      };
+      const handleReady = () => {
+        cleanup();
+        resolve();
+      };
+      const handleError = () => {
+        cleanup();
+        reject(new Error(`Failed to decode intro video ${appState.introSrc}`));
+      };
+      if (ui.introVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resolve();
+        return;
+      }
+      ui.introVideo.addEventListener("canplaythrough", handleReady, { once: true });
+      ui.introVideo.addEventListener("loadeddata", handleReady, { once: true });
+      ui.introVideo.addEventListener("error", handleError, { once: true });
+    });
+    appState.introReady = true;
+    markPreloadStage(record, "decoded", "decodeAt");
+    finishPreloadRecord(record);
+  } catch (error) {
+    appState.introReady = false;
+    finishPreloadRecord(record, error);
+    throw error;
+  }
+}
+
 async function runPreloadTasks(tasks, concurrency, onSettled) {
   let cursor = 0;
   preloadDebugState.concurrency = concurrency;
@@ -1457,11 +1510,11 @@ async function preloadGameAssets() {
   ];
   const imageSources = [...new Set(cssPreloadImages.map((src) => absoluteUrl(assetUrl(src))))];
   const fetchSources = [
-    appState.introSrc,
     mapVideo.src,
     ...AudioSystem.preloadSources()
   ].map(absoluteUrl);
   const tasks = [
+    () => preloadIntroVideo(),
     ...imageElements.map((image) => () => waitForImage(image)),
     ...imageSources.map((src) => () => preloadImageSource(src)),
     ...[...new Set(fetchSources)].map((src) => () => preloadFetchAsset(src))
@@ -4122,7 +4175,10 @@ function beginIntro() {
   setStageMode("intro");
   ui.startScreen.classList.add("hidden");
   ui.introScreen.classList.remove("hidden");
-  ui.introVideo.src = appState.introSrc;
+  if (ui.introVideo.src !== appState.introBlobUrl) {
+    ui.introVideo.src = appState.introBlobUrl || appState.introSrc;
+    ui.introVideo.load();
+  }
   ui.introVideo.currentTime = 0;
   ui.introVideo.play().catch(() => {});
   window.clearTimeout(introTimer);
