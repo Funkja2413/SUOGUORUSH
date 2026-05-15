@@ -499,6 +499,10 @@ const AudioSystem = (() => {
       setMusic(currentMusicKey || "battle");
       syncUi();
     },
+    async startHomeAudio() {
+      await this.unlock();
+      this.uiSelect();
+    },
     toggleMusic() {
       setMusicEnabled(!musicEnabled);
     },
@@ -1535,6 +1539,7 @@ async function preloadGameAssets() {
   ui.menuStart.disabled = false;
   ui.menuRanking.disabled = false;
   ui.preloadScreen.classList.add("is-complete");
+  AudioSystem.startHomeAudio();
 }
 
 const paths = [
